@@ -8,8 +8,7 @@
 
 #include "serial_megapi.h"
 
-int decode_data(){
-    // char ret = {0x0, 0x0, 0x0, 0x0}; 
+int decode_data(){ 
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
         && 0xd == makeblock_response_msg[8] && 0xa == makeblock_response_msg[9])
@@ -58,8 +57,6 @@ int decode_data(){
 
         switch (dev_id) {
             case GYRO_DEV_ID:
-                // char axis = ((ext_id & 0xf0) >> 4) - GYRO_PORT;
-
                 for(int axis = 1; axis < 4; axis++){
                     if(DATA_TYPE_FLOAT == data_type[axis - 1]){
                         if(GYRO_AXE_X == axis){
@@ -80,9 +77,6 @@ int decode_data(){
         }
     }
 
-    // for(int eraser = 0; eraser < MKBLK_MAX_MSG_SIZE; eraser++){
-    //     makeblock_response_msg[eraser] = 0x0;
-    // }
     return ret;
 }
 
@@ -116,22 +110,6 @@ int request_gyro(const int fd, char axis){
     =   {0xff, 0x55, GYRO_MSG_SIZE, 
         ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
 
-    // fflush(stdout);
-    // ret = write (fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
-
-    // serialFlush(fd);
-    // delay(3);
-
-    // receive_msg(fd);
-
-    // char data[5];
-    // decode_data(data);
-    // if(DATA_TYPE_FLOAT == data[0]){
-    //     ret = *(float*)(data+1);
-    // } else {
-    //     ret = 0.0;
-    // }
-
     return request_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
 }
 
@@ -163,8 +141,8 @@ void receive_msg(int fd){
     }
 
     if(ii >= MAKEBLOCK_MSG_SIZE ){
+        // printf ("\ndata_received of size: %d", ii) ;
         decode_data();
-        printf ("\ndata_received of size: %d", ii) ;
     }
 
 }
