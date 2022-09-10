@@ -27,24 +27,6 @@
 #define ACTION_RESET        0x4
 #define ACTION_START        0x5
 
-char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
-
-typedef struct SerialGyro
-{
-    float x_;
-    float y_;
-    float z_;
-} SerialGyro;
-
-typedef struct SerialUss
-{
-    char port;
-    float distance_cm;
-} SerialUss;
-
-SerialGyro data_gyro;
-SerialUss data_uss[8];
-
 float get_gyro_x();
 float get_gyro_y();
 float get_gyro_z();

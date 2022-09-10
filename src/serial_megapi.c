@@ -8,7 +8,25 @@
 
 #include "serial_megapi.h"
 
-int decode_data(){ 
+char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
+
+typedef struct SerialGyro
+{
+    float x_;
+    float y_;
+    float z_;
+} SerialGyro;
+
+typedef struct SerialUss
+{
+    char port;
+    float distance_cm;
+} SerialUss;
+
+SerialGyro data_gyro;
+SerialUss data_uss[8];
+
+int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
         && 0xd == makeblock_response_msg[8] && 0xa == makeblock_response_msg[9])

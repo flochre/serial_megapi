@@ -27,3 +27,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE .)
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_include_directories(serialTest PUBLIC include)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 1
+
+    PUBLIC_HEADER "${PUBLIC_INCLUDE_FILES}"
+)
+
+install(TARGETS ${PROJECT_NAME}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/${package}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${package})
