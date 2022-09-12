@@ -27,6 +27,9 @@
 #define ACTION_RESET        0x4
 #define ACTION_START        0x5
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 float get_gyro_x();
 float get_gyro_y();
 float get_gyro_z();
@@ -37,5 +40,9 @@ int request_gyro(const int fd, char axis);
 int request_uss(const int fd, char port);
 
 void receive_msg(const int fd);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SERIAL_MEGAPI_H_
