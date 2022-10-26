@@ -92,7 +92,7 @@ int main ()
         // request_motor_speed(fd, 2); 
       } else {
         // printf ("\nOut USS : %f: ", get_uss(fd, 0x7));
-        // request_uss(fd, 0x7);
+        request_uss(fd, 0x7);
         // request_motor_pos(fd, 1);  
         request_motor_speed(fd, 1); 
         request_motor_speed(fd, 2); 
@@ -100,7 +100,7 @@ int main ()
         request_motor_speed(fd, 4); 
       }
 
-      // printf( "gyro_x : %f / gyro_z : %f / uss_cm : %f \n", get_gyro_x(), get_gyro_z(), get_uss(7));
+      printf( "gyro_x : %f / gyro_z : %f / uss_cm : %f \n", get_gyro_x(), get_gyro_z(), get_uss(7));
       
       nextTime += 300 ;
       ++count ;

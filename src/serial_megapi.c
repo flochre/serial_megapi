@@ -30,7 +30,7 @@ typedef struct SerialUss
 } SerialUss;
 
 SerialGyro data_gyro;
-SerialUss data_uss[8];
+SerialUss data_uss[4];
 
 int encoders_pos[4];
 float encoders_speed[4];
@@ -54,17 +54,19 @@ int decode_data(){
                     // Float value -> motor speed
                     encoders_speed[motor-1] = *(float*)(makeblock_response_msg+4);
                     printf("\nmotor speed decoder / %d : %f", motor, encoders_speed[motor-1]);
+                    ret = 0;
                 } else if(DATA_TYPE_LONG == data_type){
                     // Long value -> Motor encodeur
                     encoders_pos[motor-1] = *(int*)(makeblock_response_msg+4);
                     printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
+                    ret = 0;
                 }
                 break;
             
             case USS_DEV_ID:
                 int port = ((ext_id & 0xf0) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
-                    data_uss[port-1].distance_cm = *(float*)(makeblock_response_msg+4);
+                    data_uss[port-1-4].distance_cm = *(float*)(makeblock_response_msg+4);
                     ret = 0;
                 }
                 break;
@@ -134,7 +136,7 @@ float get_gyro_z(){
 }
 
 float get_uss(int port){
-    return data_uss[port-1].distance_cm;
+    return data_uss[port-1-4].distance_cm;
 }
 
 int send_data(const int fd, const char *s, const int buffer_size){
