@@ -14,6 +14,23 @@
 #define GYRO_MSG_SIZE       0x5
 #define GYRO_PORT           0x0
 
+#define SET_MOTOR_MSG_SIZE  0x7
+#define READ_MOTOR_MSG_SIZE 0x6
+  //Secondary command
+  #define READ_MOTOR_POS    0x01
+  #define READ_MOTOR_SPEED  0x02
+
+#define MOTOR_DEV_ID        0x3d // 61
+#define MOTOR_EXT_ID        0x0
+#define ENCODER_PID_MOTION  0x3e // 62
+  //Secondary command
+  #define ENCODER_BOARD_POS_MOTION_MOVE    0x01
+  #define ENCODER_BOARD_SPEED_MOTION       0x02
+  #define ENCODER_BOARD_PWM_MOTION         0x03
+  #define ENCODER_BOARD_SET_CUR_POS_ZERO   0x04
+  #define ENCODER_BOARD_CAR_POS_MOTION     0x05
+  #define ENCODER_BOARD_POS_MOTION_MOVETO  0x06
+
 #define USS_DEV_ID          0x1
 #define USS_MSG_SIZE        0x4
 #define USS_MAX_NB          0x4
@@ -21,6 +38,7 @@
 #define USS_LAST_SLOT       USS_FIRST_SLOT + USS_MAX_NB - 1
 
 #define DATA_TYPE_FLOAT     0x2
+#define DATA_TYPE_LONG      0x6
 
 #define ACTION_GET          0x1
 #define ACTION_RUN          0x2
@@ -40,6 +58,8 @@ int request_gyro(const int fd, char axis);
 int request_uss(const int fd, char port);
 
 void receive_msg(const int fd);
+
+int set_speed(const int fd, char motor, int speed);
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,12 @@
 
 char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
 
+union
+{
+  char byteVal[2];
+  int shortVal;
+}valShort;
+
 typedef struct SerialGyro
 {
     float x_;
@@ -26,6 +32,9 @@ typedef struct SerialUss
 SerialGyro data_gyro;
 SerialUss data_uss[8];
 
+int encoders_pos[4];
+float encoders_speed[4];
+
 int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
@@ -38,6 +47,20 @@ int decode_data(){
         // printf("dev_id : %d / data_type : %d", dev_id, data_type);
 
         switch (dev_id) {
+            case MOTOR_DEV_ID & 0xf:
+                // ext_id_motor = ((motor<<4)+MOTOR_DEV_ID)&0xff;
+                int motor = ((ext_id - MOTOR_DEV_ID) >> 4);
+                if(DATA_TYPE_FLOAT == data_type){
+                    // Float value -> motor speed
+                    encoders_speed[motor-1] = *(float*)(makeblock_response_msg+4);
+                    printf("\nmotor speed decoder / %d : %f", motor, encoders_speed[motor-1]);
+                } else if(DATA_TYPE_LONG == data_type){
+                    // Long value -> Motor encodeur
+                    encoders_pos[motor-1] = *(int*)(makeblock_response_msg+4);
+                    printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
+                }
+                break;
+            
             case USS_DEV_ID:
                 int port = ((ext_id & 0xf0) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
@@ -114,12 +137,12 @@ float get_uss(int port){
     return data_uss[port-1].distance_cm;
 }
 
-int request_data(const int fd, const char *s, const int buffer_size){
+int send_data(const int fd, const char *s, const int buffer_size){
     return write(fd, s, buffer_size);
 }
 
 int request_gyro_all_axes(const int fd){
-    return request_gyro(fd, 0);
+    return request_gyro(fd, GYRO_ALL_AXES);
 }
 
 int request_gyro(const int fd, char axis){
@@ -128,7 +151,25 @@ int request_gyro(const int fd, char axis){
     =   {0xff, 0x55, GYRO_MSG_SIZE, 
         ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
 
-    return request_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
+    return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
+}
+
+int request_motor_info(const int fd, char motor, char pos_speed){
+
+    char ext_id_motor = ((motor<<4)+MOTOR_DEV_ID)&0xff;
+    char motor_msg[HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE] 
+    =   {0xff, 0x55, READ_MOTOR_MSG_SIZE, 
+        ext_id_motor, ACTION_GET, MOTOR_DEV_ID, 0x0, motor, pos_speed};
+
+    return send_data(fd, motor_msg, HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE);
+}
+
+int request_motor_pos(const int fd, char motor){
+    return request_motor_info(fd, motor, READ_MOTOR_POS);
+}
+
+int request_motor_speed(const int fd, char motor){
+    return request_motor_info(fd, motor, READ_MOTOR_SPEED);
 }
 
 int request_uss(const int fd, char port){
@@ -138,7 +179,7 @@ int request_uss(const int fd, char port){
     =   {0xff, 0x55, USS_MSG_SIZE, 
         ext_id_uss, ACTION_GET, USS_DEV_ID, port};
 
-    return request_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
+    return send_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
 }
 
 void receive_msg(int fd){
@@ -163,4 +204,18 @@ void receive_msg(int fd){
         decode_data();
     }
 
+}
+
+int set_speed(const int fd, char motor, int speed){
+    if(motor < 1 && motor > 4){
+        return -1;
+    }
+
+    valShort.shortVal = speed;
+
+    char motor_msg[HEADER_MSG_SIZE + SET_MOTOR_MSG_SIZE] 
+    =   {0xff, 0x55, SET_MOTOR_MSG_SIZE, 
+        MOTOR_EXT_ID, ACTION_RUN, ENCODER_PID_MOTION, ENCODER_BOARD_SPEED_MOTION, motor, valShort.byteVal[0], valShort.byteVal[1]};
+
+    return send_data(fd, motor_msg, HEADER_MSG_SIZE + SET_MOTOR_MSG_SIZE);
 }

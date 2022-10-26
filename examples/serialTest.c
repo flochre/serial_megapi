@@ -63,16 +63,44 @@ int main ()
       // write (fd, gyro_msg, 8) ;
       // write (fd, uss_msg, USS_MSG_SIZE) ;
 
+      // if(10 == count){
+      //   set_speed(fd, 2, 60);
+      //   set_speed(fd, 3, -60);
+      // }
+
+      // if(100 == count){
+      //   set_speed(fd, 2, 0);
+      //   set_speed(fd, 3, 0);
+      // }
+
+      // if(120 == count){
+      //   set_speed(fd, 2, -60);
+      //   set_speed(fd, 3, 60);
+      // }
+
+      // if(220 == count){
+      //   set_speed(fd, 2, 0);
+      //   set_speed(fd, 3, 0);
+      // }
+
       if(0 == count % 2){
         // printf ("\nOut Gyro: %f: ", get_gyro(fd, GYRO_AXE_X));  
-        request_gyro_all_axes(fd);
+        // request_gyro_all_axes(fd);
+        // request_gyro(fd, GYRO_ALL_AXES);
         // request_gyro(fd, GYRO_AXE_Z);
+        request_motor_pos(fd, 2);
+        // request_motor_speed(fd, 2); 
       } else {
         // printf ("\nOut USS : %f: ", get_uss(fd, 0x7));
-        request_uss(fd, 0x7);   
+        // request_uss(fd, 0x7);
+        // request_motor_pos(fd, 1);  
+        request_motor_speed(fd, 1); 
+        request_motor_speed(fd, 2); 
+        request_motor_speed(fd, 3); 
+        request_motor_speed(fd, 4); 
       }
 
-      printf( "gyro_x : %f / gyro_z : %f / uss_cm : %f \n", get_gyro_x(), get_gyro_z(), get_uss(7));
+      // printf( "gyro_x : %f / gyro_z : %f / uss_cm : %f \n", get_gyro_x(), get_gyro_z(), get_uss(7));
       
       nextTime += 300 ;
       ++count ;
