@@ -189,7 +189,7 @@ void receive_msg(int fd){
 
     while (serialDataAvail (fd)){
         makeblock_response_msg[ii] = serialGetchar (fd);
-        printf (" -> %3d", makeblock_response_msg[ii]) ;
+        // printf (" -> %3d", makeblock_response_msg[ii]) ;
         fflush (stdout) ;
 
         // In the case of USS sensor the header is send before the USS data is there
