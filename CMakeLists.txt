@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(serial_megapi VERSION 1.0 DESCRIPTION "lib to communicate with the megapi over serial")
+project(serial_megapi VERSION 1.1 DESCRIPTION "lib to communicate with the megapi over serial")
 include(GNUInstallDirs)
 
 set(package serial_megapi)

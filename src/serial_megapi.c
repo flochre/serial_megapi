@@ -53,12 +53,12 @@ int decode_data(){
                 if(DATA_TYPE_FLOAT == data_type){
                     // Float value -> motor speed
                     encoders_speed[motor-1] = *(float*)(makeblock_response_msg+4);
-                    printf("\nmotor speed decoder / %d : %f", motor, encoders_speed[motor-1]);
+                    // printf("\nmotor speed decoder / %d : %f", motor, encoders_speed[motor-1]);
                     ret = 0;
                 } else if(DATA_TYPE_LONG == data_type){
                     // Long value -> Motor encodeur
                     encoders_pos[motor-1] = *(int*)(makeblock_response_msg+4);
-                    printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
+                    // printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
                     ret = 0;
                 }
                 break;
@@ -118,6 +118,51 @@ int decode_data(){
             default:
                 break;
         }
+    } else if (
+        0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
+        && 0xd == makeblock_response_msg[23] && 0xa == makeblock_response_msg[24])
+    {
+        // printf("\nBig makeblock new message check!!");
+        char ext_id = makeblock_response_msg[2];
+        char data_type[4] = {makeblock_response_msg[3], makeblock_response_msg[8], makeblock_response_msg[13], makeblock_response_msg[18]};
+        char dev_id = ext_id & 0xf;
+
+        switch (dev_id) {
+            case TWO_ENCODERS_POS_SPEED & 0xf:
+                int motor = ((ext_id & 0xf0) >> 4);
+                char motor_1 = motor & 0x3;
+                char motor_2 = (motor & 0xc) >> 2;
+
+                // printf("\nTWO_ENCODERS_POS_SPEED check!! ext_id %d / motor_1 %d / motor_2 %d", ext_id, motor_1, motor_2);
+                
+                for(int value = 0; value < 4; value++){
+                    if(0 == value || 1 == value){
+                        motor = motor_1;
+                    }
+
+                    if(2 == value || 3 == value){
+                        motor = motor_2;
+                    }
+
+                    if(DATA_TYPE_FLOAT == data_type[value]){
+                        // Float value -> motor speed
+                        encoders_speed[motor] = *(float*)(makeblock_response_msg+4 + 5*value);
+                        // printf("\nmotor speed decoder / %d : %f", motor+1, encoders_speed[motor]);
+                        ret = 0;
+                    }
+
+                    if(DATA_TYPE_LONG == data_type[value]){
+                        // Long value -> Motor encodeur
+                        encoders_pos[motor] = *(int*)(makeblock_response_msg+4 + 5*value);
+                        // printf("\nmotor pos decoder/ %d : %d",  motor+1, encoders_pos[motor]);
+                        ret = 0;
+                    }
+                }
+                break;
+            
+            default:
+                break;
+        }
     }
 
     return ret;
@@ -133,6 +178,14 @@ float get_gyro_y(){
 
 float get_gyro_z(){
     return data_gyro.z_;
+}
+
+int get_motor_position(int port){
+    return encoders_pos[port-1];
+}
+
+float get_motor_speed(int port){
+    return encoders_speed[port-1];
 }
 
 float get_uss(int port){
@@ -166,12 +219,28 @@ int request_motor_info(const int fd, char motor, char pos_speed){
     return send_data(fd, motor_msg, HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE);
 }
 
-int request_motor_pos(const int fd, char motor){
+int request_two_motors_info(const int fd, char motor_1, char motor_2){
+
+    char motor = ((motor_1 - 1) & 0x3) + (((motor_2 - 1) & 0x3) << 2);
+    char ext_id_motor = ((motor<<4)+((TWO_ENCODERS_POS_SPEED)&0xf)) & 0xff;
+    // printf("\nrequest 2motors : motor : %d ext_id: %d / motor_1 %d  motor_2 %d\n", motor, ext_id_motor, motor_1, motor_2);
+    char motor_msg[HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE] 
+    =   {0xff, 0x55, READ_MOTOR_MSG_SIZE, 
+        ext_id_motor, ACTION_GET, TWO_ENCODERS_POS_SPEED, 0x0, motor_1, motor_2};
+
+    return send_data(fd, motor_msg, HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE);
+}
+
+int request_motor_position(const int fd, char motor){
     return request_motor_info(fd, motor, READ_MOTOR_POS);
 }
 
 int request_motor_speed(const int fd, char motor){
     return request_motor_info(fd, motor, READ_MOTOR_SPEED);
+}
+
+int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2){
+    return request_two_motors_info(fd, motor_1, motor_2);
 }
 
 int request_uss(const int fd, char port){
