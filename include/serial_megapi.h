@@ -30,6 +30,7 @@
   #define ENCODER_BOARD_SET_CUR_POS_ZERO   0x04
   #define ENCODER_BOARD_CAR_POS_MOTION     0x05
   #define ENCODER_BOARD_POS_MOTION_MOVETO  0x06
+#define TWO_ENCODERS_POS_SPEED  0x3f // 63
 
 #define USS_DEV_ID          0x1
 #define USS_MSG_SIZE        0x4
@@ -51,10 +52,15 @@ extern "C" {
 float get_gyro_x();
 float get_gyro_y();
 float get_gyro_z();
+int   get_motor_position(int port);
+float get_motor_speed(int port);
 float get_uss(int port);
 
 int request_gyro_all_axes(const int fd);
 int request_gyro(const int fd, char axis);
+int request_motor_position(const int fd, char motor);
+int request_motor_speed(const int fd, char motor);
+int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2);
 int request_uss(const int fd, char port);
 
 void receive_msg(const int fd);
