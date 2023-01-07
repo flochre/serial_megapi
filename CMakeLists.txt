@@ -22,11 +22,15 @@ target_link_libraries(${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)
 add_executable(serialTest examples/serialTest.c)
 target_link_libraries(serialTest ${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)
 
+add_executable(serialTestExt examples/serialTest_external.c)
+target_link_libraries(serialTestExt ${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)
+
 file(GLOB_RECURSE PUBLIC_INCLUDE_FILES "include/*.h*")
 
 target_include_directories(${PROJECT_NAME} PRIVATE .)
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_include_directories(serialTest PUBLIC include)
+target_include_directories(serialTestExt PUBLIC include)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
