@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(serial_megapi VERSION 1.1 DESCRIPTION "lib to communicate with the megapi over serial")
+project(serial_megapi VERSION 1.2 DESCRIPTION "lib to communicate with the megapi over serial")
 include(GNUInstallDirs)
 
 set(package serial_megapi)
@@ -17,6 +17,7 @@ add_compile_options(-pipe)
 add_library(${PROJECT_NAME} SHARED 
     src/serial_megapi.c
 )
+target_link_libraries(${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)
 
 add_executable(serialTest examples/serialTest.c)
 target_link_libraries(serialTest ${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)

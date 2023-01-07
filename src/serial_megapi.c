@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <unistd.h>
-
-#include <wiringPi.h>
-#include <wiringSerial.h>
-
 #include "serial_megapi.h"
 
 char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
@@ -34,6 +26,44 @@ SerialUss data_uss[4];
 
 int encoders_pos[4];
 float encoders_speed[4];
+
+int fd_ = -1;
+int serial_initialized_ = 0;
+
+PI_THREAD (read_serial)
+{
+  for (;;)
+  {
+    delay(3);
+    receive_msg(fd_);
+  }
+}
+
+int init_serial(const char * device, int baud){
+    if (serial_initialized_){
+        return fd_;
+    } else {
+        // if ((fd = serialOpen ("/dev/ttyAMA0", 115200)) < 0)
+        if ((fd_ = serialOpen (device, baud)) < 0)
+        {
+            fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
+            fd_ = -1;
+            return fd_;
+        }
+
+        if (wiringPiSetup () == -1)
+        {
+            fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
+            fd_ = -1;
+            return fd_;
+        }
+
+        serial_initialized_ = 1;
+        piThreadCreate (read_serial) ;
+
+        return fd_;
+    }
+}
 
 int decode_data(){
     int ret = -1;

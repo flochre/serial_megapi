@@ -1,6 +1,14 @@
 #ifndef SERIAL_MEGAPI_H_
 #define SERIAL_MEGAPI_H_
 
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+
+#include <wiringPi.h>
+#include <wiringSerial.h>
+
 #define MAKEBLOCK_MSG_SIZE  0xa
 #define MKBLK_MAX_MSG_SIZE  0x14
 
@@ -49,6 +57,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int init_serial(const char * device, int baud);
+
 float get_gyro_x();
 float get_gyro_y();
 float get_gyro_z();
