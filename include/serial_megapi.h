@@ -10,7 +10,7 @@
 #include <wiringSerial.h>
 
 #define MAKEBLOCK_MSG_SIZE  0xa
-#define MKBLK_MAX_MSG_SIZE  0x14
+#define MKBLK_MAX_MSG_SIZE  0x1a
 
 #define HEADER_MSG_SIZE     0x3
 
@@ -53,6 +53,11 @@
 #define ACTION_RUN          0x2
 #define ACTION_RESET        0x4
 #define ACTION_START        0x5
+
+#define MOTOR_MUTEX         0x0
+#define IMU_MUTEX           0x1
+#define USS_MUTEX           0x2
+#define OTHER_MUTEX         0x3
 
 #ifdef __cplusplus
 extern "C" {

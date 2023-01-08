@@ -78,6 +78,8 @@ int decode_data(){
 
         switch (dev_id) {
             case MOTOR_DEV_ID & 0xf:
+
+                piLock (MOTOR_MUTEX) ;
                 // ext_id_motor = ((motor<<4)+MOTOR_DEV_ID)&0xff;
                 int motor = ((ext_id - MOTOR_DEV_ID) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
@@ -91,16 +93,20 @@ int decode_data(){
                     // printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
                     ret = 0;
                 }
+                piUnlock (MOTOR_MUTEX);
                 break;
             
             case USS_DEV_ID:
+                piLock (USS_MUTEX) ;
                 int port = ((ext_id & 0xf0) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
                     data_uss[port-1-4].distance_cm = *(float*)(makeblock_response_msg+4);
                     ret = 0;
                 }
+                piUnlock (USS_MUTEX) ;
                 break;
             case GYRO_DEV_ID:
+                piLock (IMU_MUTEX) ;
                 char axis = ((ext_id & 0xf0) >> 4) - GYRO_PORT;
                 if(DATA_TYPE_FLOAT == data_type){
                     if(GYRO_AXE_X == axis){
@@ -115,6 +121,8 @@ int decode_data(){
                     }
                     
                 }
+                piUnlock (IMU_MUTEX) ;
+                break;
 
             default:
                 break;
@@ -130,6 +138,7 @@ int decode_data(){
 
         switch (dev_id) {
             case GYRO_DEV_ID:
+                piLock (IMU_MUTEX) ;
                 for(int axis = 1; axis < 4; axis++){
                     if(DATA_TYPE_FLOAT == data_type[axis - 1]){
                         if(GYRO_AXE_X == axis){
@@ -144,6 +153,8 @@ int decode_data(){
                     }
                 }
                 ret = 0;
+                piUnlock (IMU_MUTEX) ;
+                break;
 
             default:
                 break;
@@ -159,6 +170,7 @@ int decode_data(){
 
         switch (dev_id) {
             case TWO_ENCODERS_POS_SPEED & 0xf:
+                piLock (MOTOR_MUTEX) ;
                 int motor = ((ext_id & 0xf0) >> 4);
                 char motor_1 = motor & 0x3;
                 char motor_2 = (motor & 0xc) >> 2;
@@ -188,6 +200,7 @@ int decode_data(){
                         ret = 0;
                     }
                 }
+                piUnlock (MOTOR_MUTEX) ;
                 break;
             
             default:
@@ -199,27 +212,53 @@ int decode_data(){
 }
 
 float get_gyro_x(){
-    return data_gyro.x_;
+    piLock (IMU_MUTEX) ;
+    float x = data_gyro.x_;
+    piUnlock (IMU_MUTEX) ;
+    return x;
 }
 
 float get_gyro_y(){
-    return data_gyro.y_;
+    piLock (IMU_MUTEX) ;
+    float y = data_gyro.y_;
+    piUnlock (IMU_MUTEX) ;
+    return y;
 }
 
 float get_gyro_z(){
-    return data_gyro.z_;
+    piLock (IMU_MUTEX) ;
+    float z = data_gyro.z_;
+    piUnlock (IMU_MUTEX) ;
+    return z;
 }
 
 int get_motor_position(int port){
-    return encoders_pos[port-1];
+
+    piLock (MOTOR_MUTEX);
+    int encoder_pos = encoders_pos[port-1];
+    piUnlock (MOTOR_MUTEX);
+
+    return encoder_pos;
+
+    // return encoders_pos[port-1];
 }
 
 float get_motor_speed(int port){
-    return encoders_speed[port-1];
+
+    piLock (MOTOR_MUTEX);
+    float encoder_speed = encoders_speed[port-1];
+    piUnlock (MOTOR_MUTEX);
+
+    return encoder_speed;
+
+    // return encoders_speed[port-1];
 }
 
 float get_uss(int port){
-    return data_uss[port-1-4].distance_cm;
+    piLock (USS_MUTEX);
+    float distance_cm = data_uss[port-1-4].distance_cm;
+    piUnlock (USS_MUTEX);
+    return distance_cm;
 }
 
 int send_data(const int fd, const char *s, const int buffer_size){
