@@ -51,7 +51,7 @@ int main ()
   //   return 1 ;
   // }
 
-  if ((fd = init_serial(const char * device, int baud)) < 0){
+  if ((fd = init_serial("/dev/ttyAMA0", 115200)) < 0){
     fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
     return 1 ;
   }
@@ -62,7 +62,7 @@ int main ()
   {
     if (millis () > nextTime)
     {
-      printf ("\nOut: %3d: ", count) ;
+      printf ("\nOut: %3d: %d", count, fd) ;
       fflush (stdout) ;
 
       // write (fd, gyro_msg, 8) ;
