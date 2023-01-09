@@ -10,9 +10,15 @@ union
 
 typedef struct SerialGyro
 {
-    float x_;
-    float y_;
-    float z_;
+    float roll_;
+    float pitch_;
+    float yaw_;
+    float ang_x_;
+    float ang_y_;
+    float ang_z_;
+    float lin_x_;
+    float lin_y_;
+    float lin_z_;
 } SerialGyro;
 
 typedef struct SerialUss
@@ -37,6 +43,36 @@ PI_THREAD (read_serial)
     delay(3);
     receive_msg(fd_);
   }
+}
+
+int send_data(const int fd, const char *s, const int buffer_size){
+    return write(fd, s, buffer_size);
+}
+
+int init_gyro(const int fd, char port){
+    if(6 > port || port > 8){
+        return -1;
+    }
+    char axis = GYRO_ALL_AXES;
+    char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
+    char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
+    =   {0xff, 0x55, GYRO_MSG_SIZE, 
+        ext_id_gyro, ACTION_GET, GYRO_DEV_ID, port, axis};
+
+    return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
+}
+
+int stop_gyro(const int fd, char port){
+    if(6 > port || port > 8){
+        return -1;
+    }
+    char axis = GYRO_ALL_AXES;
+    char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
+    char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
+    =   {0xff, 0x55, GYRO_MSG_SIZE, 
+        ext_id_gyro, ACTION_GET, GYRO_DEV_ID, port+0x10, axis};
+
+    return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
 }
 
 int init_serial(const char * device, int baud){
@@ -110,13 +146,13 @@ int decode_data(){
                 char axis = ((ext_id & 0xf0) >> 4) - GYRO_PORT;
                 if(DATA_TYPE_FLOAT == data_type){
                     if(GYRO_AXE_X == axis){
-                        data_gyro.x_ = *(float*)(makeblock_response_msg+4);
+                        data_gyro.roll_ = *(float*)(makeblock_response_msg+4);
                         ret = 0;
                     } else if(GYRO_AXE_Y == axis){
-                        data_gyro.y_ = *(float*)(makeblock_response_msg+4);
+                        data_gyro.pitch_ = *(float*)(makeblock_response_msg+4);
                         ret = 0;
                     } else if(GYRO_AXE_Z == axis){
-                        data_gyro.z_ = *(float*)(makeblock_response_msg+4);
+                        data_gyro.yaw_ = *(float*)(makeblock_response_msg+4);
                         ret = 0;
                     }
                     
@@ -142,13 +178,13 @@ int decode_data(){
                 for(int axis = 1; axis < 4; axis++){
                     if(DATA_TYPE_FLOAT == data_type[axis - 1]){
                         if(GYRO_AXE_X == axis){
-                            data_gyro.x_ = *(float*)(makeblock_response_msg+4 + 5*(axis - 1));
+                            data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*(axis - 1));
                         }
                         if(GYRO_AXE_Y == axis){
-                            data_gyro.y_ = *(float*)(makeblock_response_msg+4 + 5*(axis - 1));
+                            data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*(axis - 1));
                         }
                         if(GYRO_AXE_Z == axis){
-                            data_gyro.z_ = *(float*)(makeblock_response_msg+4 + 5*(axis - 1));
+                            data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*(axis - 1));
                         }
                     }
                 }
@@ -206,28 +242,138 @@ int decode_data(){
             default:
                 break;
         }
+    } else if (
+        0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1]) {
+        char ext_id = makeblock_response_msg[2];
+        char data_type[9] = {
+            makeblock_response_msg[3], 
+            makeblock_response_msg[8], 
+            makeblock_response_msg[13], 
+            makeblock_response_msg[18],
+            makeblock_response_msg[23],
+            makeblock_response_msg[28],
+            makeblock_response_msg[33],
+            makeblock_response_msg[38],
+            makeblock_response_msg[43]
+        };
+        char dev_id = ext_id & 0xf;
+        piLock (IMU_MUTEX) ;
+        for(int value = 0; value < 9; value++){
+            if(DATA_TYPE_DOUBLE == data_type[value]){
+                
+                switch (value)
+                {
+                case 0x0:
+                    data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x1:
+                    data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x2:
+                    data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x3:
+                    data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x4:
+                    data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x5:
+                    data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x6:
+                    data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x7:
+                    data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+                case 0x8:
+                    data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*value);
+                    ret = 0;
+                    break;
+
+                default:
+                ret = -1;
+                    break;
+                }
+
+                
+            }
+        }
+        piUnlock (IMU_MUTEX) ;
+
     }
 
     return ret;
 }
 
-float get_gyro_x(){
+float get_gyro_roll(){
     piLock (IMU_MUTEX) ;
-    float x = data_gyro.x_;
+    float x = data_gyro.roll_;
     piUnlock (IMU_MUTEX) ;
     return x;
 }
 
-float get_gyro_y(){
+float get_gyro_pitch(){
     piLock (IMU_MUTEX) ;
-    float y = data_gyro.y_;
+    float y = data_gyro.pitch_;
     piUnlock (IMU_MUTEX) ;
     return y;
 }
 
-float get_gyro_z(){
+float get_gyro_yaw(){
     piLock (IMU_MUTEX) ;
-    float z = data_gyro.z_;
+    float z = data_gyro.yaw_;
+    piUnlock (IMU_MUTEX) ;
+    return z;
+}
+
+float get_gyro_angular_x(){
+    piLock (IMU_MUTEX) ;
+    float x = data_gyro.ang_x_;
+    piUnlock (IMU_MUTEX) ;
+    return x;
+}
+
+float get_gyro_angular_y(){
+    piLock (IMU_MUTEX) ;
+    float y = data_gyro.ang_y_;
+    piUnlock (IMU_MUTEX) ;
+    return y;
+}
+
+float get_gyro_angular_z(){
+    piLock (IMU_MUTEX) ;
+    float z = data_gyro.ang_z_;
+    piUnlock (IMU_MUTEX) ;
+    return z;
+}
+
+float get_gyro_linear_x(){
+    piLock (IMU_MUTEX) ;
+    float x = data_gyro.lin_x_;
+    piUnlock (IMU_MUTEX) ;
+    return x;
+}
+
+float get_gyro_linear_y(){
+    piLock (IMU_MUTEX) ;
+    float y = data_gyro.lin_y_;
+    piUnlock (IMU_MUTEX) ;
+    return y;
+}
+
+float get_gyro_linear_z(){
+    piLock (IMU_MUTEX) ;
+    float z = data_gyro.lin_z_;
     piUnlock (IMU_MUTEX) ;
     return z;
 }
@@ -261,22 +407,18 @@ float get_uss(int port){
     return distance_cm;
 }
 
-int send_data(const int fd, const char *s, const int buffer_size){
-    return write(fd, s, buffer_size);
-}
+// int request_gyro_all_axes(const int fd){
+//     return request_gyro(fd, GYRO_ALL_AXES);
+// }
 
-int request_gyro_all_axes(const int fd){
-    return request_gyro(fd, GYRO_ALL_AXES);
-}
+// int request_gyro(const int fd, char axis){
+//     char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
+//     char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
+//     =   {0xff, 0x55, GYRO_MSG_SIZE, 
+//         ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
 
-int request_gyro(const int fd, char axis){
-    char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
-    char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
-    =   {0xff, 0x55, GYRO_MSG_SIZE, 
-        ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
-
-    return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
-}
+//     return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
+// }
 
 int request_motor_info(const int fd, char motor, char pos_speed){
 

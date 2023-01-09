@@ -10,7 +10,7 @@
 #include <wiringSerial.h>
 
 #define MAKEBLOCK_MSG_SIZE  0xa
-#define MKBLK_MAX_MSG_SIZE  0x1a
+#define MKBLK_MAX_MSG_SIZE  0x37
 
 #define HEADER_MSG_SIZE     0x3
 
@@ -47,6 +47,7 @@
 #define USS_LAST_SLOT       USS_FIRST_SLOT + USS_MAX_NB - 1
 
 #define DATA_TYPE_FLOAT     0x2
+#define DATA_TYPE_DOUBLE    0x5
 #define DATA_TYPE_LONG      0x6
 
 #define ACTION_GET          0x1
@@ -63,17 +64,26 @@
 extern "C" {
 #endif
 
+int init_gyro(const int fd, char port);
+int stop_gyro(const int fd, char port);
 int init_serial(const char * device, int baud);
 
-float get_gyro_x();
-float get_gyro_y();
-float get_gyro_z();
+float get_gyro_roll();
+float get_gyro_pitch();
+float get_gyro_yaw();
+float get_gyro_angular_x();
+float get_gyro_angular_y();
+float get_gyro_angular_z();
+float get_gyro_linear_x();
+float get_gyro_linear_y();
+float get_gyro_linear_z();
+
 int   get_motor_position(int port);
 float get_motor_speed(int port);
 float get_uss(int port);
 
-int request_gyro_all_axes(const int fd);
-int request_gyro(const int fd, char axis);
+// int request_gyro_all_axes(const int fd);
+// int request_gyro(const int fd, char axis);
 int request_motor_position(const int fd, char motor);
 int request_motor_speed(const int fd, char motor);
 int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2);
