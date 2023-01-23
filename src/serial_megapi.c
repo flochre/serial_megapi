@@ -244,7 +244,6 @@ int decode_data(){
         }
     } else if (
         0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1]) {
-        char ext_id = makeblock_response_msg[2];
         char data_type[9] = {
             makeblock_response_msg[3], 
             makeblock_response_msg[8], 
@@ -256,7 +255,6 @@ int decode_data(){
             makeblock_response_msg[38],
             makeblock_response_msg[43]
         };
-        char dev_id = ext_id & 0xf;
         piLock (IMU_MUTEX) ;
         for(int value = 0; value < 9; value++){
             if(DATA_TYPE_DOUBLE == data_type[value]){
