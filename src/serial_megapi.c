@@ -8,6 +8,7 @@ union
   int shortVal;
 }valShort;
 
+int gyro_new_data = 0;
 typedef struct SerialGyro
 {
     float roll_;
@@ -30,6 +31,7 @@ typedef struct SerialUss
 SerialGyro data_gyro;
 SerialUss data_uss[4];
 
+int motor_new_data = 0;
 int encoders_pos[4];
 float encoders_speed[4];
 
@@ -38,8 +40,7 @@ int serial_initialized_ = 0;
 
 PI_THREAD (read_serial)
 {
-  for (;;)
-  {
+  for (;;){
     delay(3);
     receive_msg(fd_);
   }
@@ -79,16 +80,13 @@ int init_serial(const char * device, int baud){
     if (serial_initialized_){
         return fd_;
     } else {
-        // if ((fd = serialOpen ("/dev/ttyAMA0", 115200)) < 0)
-        if ((fd_ = serialOpen (device, baud)) < 0)
-        {
+        if ((fd_ = serialOpen (device, baud)) < 0){
             fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
             fd_ = -1;
             return fd_;
         }
 
-        if (wiringPiSetup () == -1)
-        {
+        if (wiringPiSetup () == -1){
             fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
             fd_ = -1;
             return fd_;
@@ -101,11 +99,27 @@ int init_serial(const char * device, int baud){
     }
 }
 
+char init_motor_1 = 0xff;
+char init_motor_2 = 0xff;
+int init_two_motors_info(const int fd, char motor_1, char motor_2){
+    init_motor_1 = motor_1 - 1;
+    init_motor_2 = motor_2 - 1;
+
+    char motor = ((motor_1 - 1) & 0x3) + (((motor_2 - 1) & 0x3) << 2);
+    char ext_id_motor = ((motor<<4)+((TWO_ENCODERS_POS_SPEED)&0xf)) & 0xff;
+    // printf("\nrequest 2motors : motor : %d ext_id: %d / motor_1 %d  motor_2 %d\n", motor, ext_id_motor, motor_1, motor_2);
+    char motor_msg[HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE] 
+    =   {0xff, 0x55, READ_MOTOR_MSG_SIZE, 
+        ext_id_motor, ACTION_GET, TWO_ENCODERS_POS_SPEED, 0x46, motor_1, motor_2};
+
+    return send_data(fd, motor_msg, HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE);
+}
+
 int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
-        && 0xd == makeblock_response_msg[8] && 0xa == makeblock_response_msg[9])
-    {
+        && 0xd == makeblock_response_msg[8] && 0xa == makeblock_response_msg[9]
+    ){
         char ext_id = makeblock_response_msg[2];
         char data_type = makeblock_response_msg[3];
         char dev_id = ext_id & 0xf;
@@ -165,8 +179,8 @@ int decode_data(){
         }
     } else if (
         0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
-        && 0xd == makeblock_response_msg[18] && 0xa == makeblock_response_msg[19])
-    {
+        && 0xd == makeblock_response_msg[18] && 0xa == makeblock_response_msg[19]
+    ){
 
         char ext_id = makeblock_response_msg[2];
         char data_type[3] = {makeblock_response_msg[3], makeblock_response_msg[8], makeblock_response_msg[13]};
@@ -197,53 +211,56 @@ int decode_data(){
         }
     } else if (
         0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
-        && 0xd == makeblock_response_msg[23] && 0xa == makeblock_response_msg[24])
-    {
+        && 0xd == makeblock_response_msg[23] && 0xa == makeblock_response_msg[24]
+    ){
         // printf("\nBig makeblock new message check!!");
         char ext_id = makeblock_response_msg[2];
         char data_type[4] = {makeblock_response_msg[3], makeblock_response_msg[8], makeblock_response_msg[13], makeblock_response_msg[18]};
-        char dev_id = ext_id & 0xf;
 
-        switch (dev_id) {
-            case TWO_ENCODERS_POS_SPEED & 0xf:
-                piLock (MOTOR_MUTEX) ;
-                int motor = ((ext_id & 0xf0) >> 4);
-                char motor_1 = motor & 0x3;
-                char motor_2 = (motor & 0xc) >> 2;
+        piLock (MOTOR_MUTEX) ;
+        int motor = ((ext_id & 0xf0) >> 4);
+        char motor_1 = motor & 0x3;
+        char motor_2 = (motor & 0xc) >> 2;
 
-                // printf("\nTWO_ENCODERS_POS_SPEED check!! ext_id %d / motor_1 %d / motor_2 %d", ext_id, motor_1, motor_2);
-                
-                for(int value = 0; value < 4; value++){
-                    if(0 == value || 1 == value){
-                        motor = motor_1;
-                    }
-
-                    if(2 == value || 3 == value){
-                        motor = motor_2;
-                    }
-
-                    if(DATA_TYPE_FLOAT == data_type[value]){
-                        // Float value -> motor speed
-                        encoders_speed[motor] = *(float*)(makeblock_response_msg+4 + 5*value);
-                        // printf("\nmotor speed decoder / %d : %f", motor+1, encoders_speed[motor]);
-                        ret = 0;
-                    }
-
-                    if(DATA_TYPE_LONG == data_type[value]){
-                        // Long value -> Motor encodeur
-                        encoders_pos[motor] = *(int*)(makeblock_response_msg+4 + 5*value);
-                        // printf("\nmotor pos decoder/ %d : %d",  motor+1, encoders_pos[motor]);
-                        ret = 0;
-                    }
-                }
-                piUnlock (MOTOR_MUTEX) ;
-                break;
-            
-            default:
-                break;
+        if(0xff != init_motor_1){
+            motor_1 = init_motor_1;
         }
+        if(0xff != init_motor_2){
+            motor_2 = init_motor_2;
+        }
+
+        // printf("\nTWO_ENCODERS_POS_SPEED check!! ext_id %d / motor_1 %d / motor_2 %d", ext_id, motor_1, motor_2);
+        
+        for(int value = 0; value < 4; value++){
+            if(0 == value || 1 == value){
+                motor = motor_1;
+            }
+
+            if(2 == value || 3 == value){
+                motor = motor_2;    
+            }
+
+            if(DATA_TYPE_FLOAT == data_type[value]){
+                // Float value -> motor speed
+                encoders_speed[motor] = *(float*)(makeblock_response_msg+4 + 5*value);
+                // printf("\nmotor speed decoder / %d : %f", motor+1, encoders_speed[motor]);
+                ret = 0;
+            }
+
+            if(DATA_TYPE_LONG == data_type[value]){
+                // Long value -> Motor encodeur
+                encoders_pos[motor] = *(int*)(makeblock_response_msg+4 + 5*value);
+                // printf("\nmotor pos decoder/ %d : %d",  motor+1, encoders_pos[motor]);
+                ret = 0;
+            }
+        }
+        motor_new_data = 1;
+        piUnlock (MOTOR_MUTEX) ;
+
     } else if (
-        0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1]) {
+        0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1]
+        && 0xd == makeblock_response_msg[48] && 0xa == makeblock_response_msg[49]
+    ){
         char data_type[9] = {
             makeblock_response_msg[3], 
             makeblock_response_msg[8], 
@@ -255,9 +272,11 @@ int decode_data(){
             makeblock_response_msg[38],
             makeblock_response_msg[43]
         };
+        // printf("New Gyro data available \n");
         piLock (IMU_MUTEX) ;
         for(int value = 0; value < 9; value++){
-            if(DATA_TYPE_DOUBLE == data_type[value]){
+            // if(DATA_TYPE_DOUBLE == data_type[value]){
+            if(DATA_TYPE_FLOAT == data_type[value]){
                 
                 switch (value)
                 {
@@ -302,16 +321,18 @@ int decode_data(){
                 ret = -1;
                     break;
                 }
-
-                
             }
         }
+        gyro_new_data = 1;
         piUnlock (IMU_MUTEX) ;
 
     }
 
     return ret;
 }
+
+int is_gyro_new_data(){return gyro_new_data;}
+int is_motor_new_data(){return motor_new_data;}
 
 float get_gyro_roll(){
     piLock (IMU_MUTEX) ;
@@ -335,22 +356,25 @@ float get_gyro_yaw(){
 }
 
 float get_gyro_angular_x(){
+    float x = 12.1;
     piLock (IMU_MUTEX) ;
-    float x = data_gyro.ang_x_;
+    x = data_gyro.ang_x_;
     piUnlock (IMU_MUTEX) ;
     return x;
 }
 
 float get_gyro_angular_y(){
+    float y = -15.6;
     piLock (IMU_MUTEX) ;
-    float y = data_gyro.ang_y_;
+    y = data_gyro.ang_y_;
     piUnlock (IMU_MUTEX) ;
     return y;
 }
 
 float get_gyro_angular_z(){
+    float z = 25.3;
     piLock (IMU_MUTEX) ;
-    float z = data_gyro.ang_z_;
+    z = data_gyro.ang_z_;
     piUnlock (IMU_MUTEX) ;
     return z;
 }
@@ -358,6 +382,7 @@ float get_gyro_angular_z(){
 float get_gyro_linear_x(){
     piLock (IMU_MUTEX) ;
     float x = data_gyro.lin_x_;
+    gyro_new_data = 0;
     piUnlock (IMU_MUTEX) ;
     return x;
 }
@@ -365,6 +390,7 @@ float get_gyro_linear_x(){
 float get_gyro_linear_y(){
     piLock (IMU_MUTEX) ;
     float y = data_gyro.lin_y_;
+    gyro_new_data = 0;
     piUnlock (IMU_MUTEX) ;
     return y;
 }
@@ -372,6 +398,7 @@ float get_gyro_linear_y(){
 float get_gyro_linear_z(){
     piLock (IMU_MUTEX) ;
     float z = data_gyro.lin_z_;
+    gyro_new_data = 0;
     piUnlock (IMU_MUTEX) ;
     return z;
 }
@@ -380,6 +407,7 @@ int get_motor_position(int port){
 
     piLock (MOTOR_MUTEX);
     int encoder_pos = encoders_pos[port-1];
+    motor_new_data = 0;
     piUnlock (MOTOR_MUTEX);
 
     return encoder_pos;
@@ -391,6 +419,7 @@ float get_motor_speed(int port){
 
     piLock (MOTOR_MUTEX);
     float encoder_speed = encoders_speed[port-1];
+    motor_new_data = 0;
     piUnlock (MOTOR_MUTEX);
 
     return encoder_speed;

@@ -67,6 +67,10 @@ extern "C" {
 int init_gyro(const int fd, char port);
 int stop_gyro(const int fd, char port);
 int init_serial(const char * device, int baud);
+int init_two_motors_info(const int fd, char motor_1, char motor_2);
+
+int is_gyro_new_data();
+int is_motor_new_data();
 
 float get_gyro_roll();
 float get_gyro_pitch();
