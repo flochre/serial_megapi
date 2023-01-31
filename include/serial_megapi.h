@@ -23,6 +23,7 @@
 #define GYRO_PORT           0x0
 
 #define SET_MOTOR_MSG_SIZE  0x7
+#define RESET_MOTOR_MSG_SIZE 0x2
 #define READ_MOTOR_MSG_SIZE 0x6
   //Secondary command
   #define READ_MOTOR_POS    0x01
@@ -95,6 +96,7 @@ int request_uss(const int fd, char port);
 
 void receive_msg(const int fd);
 
+int reset_motors(const int fd);
 int set_speed(const int fd, char motor, int speed);
 
 #ifdef __cplusplus

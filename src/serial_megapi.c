@@ -515,6 +515,12 @@ void receive_msg(int fd){
 
 }
 
+int reset_motors(const int fd){
+    char reset_msg[HEADER_MSG_SIZE + RESET_MOTOR_MSG_SIZE]
+    = {0xff, 0x55, RESET_MOTOR_MSG_SIZE, 0x0, ACTION_RUN};
+    return send_data(fd, reset_msg, HEADER_MSG_SIZE + RESET_MOTOR_MSG_SIZE);
+}
+
 int set_speed(const int fd, char motor, int speed){
     if(motor < 1 && motor > 4){
         return -1;
