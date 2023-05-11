@@ -8,7 +8,6 @@ union
   int shortVal;
 }valShort;
 
-int gyro_new_data = 0;
 typedef struct SerialGyro
 {
     float roll_;
@@ -28,8 +27,14 @@ typedef struct SerialUss
     float distance_cm;
 } SerialUss;
 
+int gyro_new_data = 0;
 SerialGyro data_gyro;
-SerialUss data_uss[4];
+
+int uss_new_data[USS_MAX_NB];
+for(int i=0;i<USS_MAX_NB;i++){
+    uss_new_data[i] = 0;
+}
+SerialUss data_uss[USS_MAX_NB];
 
 int motor_new_data = 0;
 int encoders_pos[4];
@@ -115,6 +120,19 @@ int init_two_motors_info(const int fd, char motor_1, char motor_2){
     return send_data(fd, motor_msg, HEADER_MSG_SIZE + READ_MOTOR_MSG_SIZE);
 }
 
+int init_uss(const int fd, char port){
+    if(USS_FIRST_SLOT > port || port > USS_LAST_SLOT){
+        return -1;
+    }
+
+    char ext_id_uss = ((port<<4)+USS_DEV_ID);
+    char uss_msg[HEADER_MSG_SIZE + USS_MSG_SIZE]
+    =   {0xff, 0x55, USS_MSG_SIZE,
+        ext_id_uss, ACTION_GET, USS_DEV_ID, port};
+
+    return send_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
+}
+
 int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
@@ -153,6 +171,7 @@ int decode_data(){
                     data_uss[port-1-4].distance_cm = *(float*)(makeblock_response_msg+4);
                     ret = 0;
                 }
+                uss_new_data[port-1-4] = 1;
                 piUnlock (USS_MUTEX) ;
                 break;
             case GYRO_DEV_ID:
@@ -430,6 +449,7 @@ float get_motor_speed(int port){
 float get_uss(int port){
     piLock (USS_MUTEX);
     float distance_cm = data_uss[port-1-4].distance_cm;
+    uss_new_data[port-1-4] = 0;
     piUnlock (USS_MUTEX);
     return distance_cm;
 }
@@ -484,8 +504,8 @@ int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2){
 int request_uss(const int fd, char port){
 
     char ext_id_uss = ((port<<4)+USS_DEV_ID);
-    char uss_msg[HEADER_MSG_SIZE + USS_MSG_SIZE] 
-    =   {0xff, 0x55, USS_MSG_SIZE, 
+    char uss_msg[HEADER_MSG_SIZE + USS_MSG_SIZE]
+    =   {0xff, 0x55, USS_MSG_SIZE,
         ext_id_uss, ACTION_GET, USS_DEV_ID, port};
 
     return send_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
