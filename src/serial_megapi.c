@@ -23,6 +23,7 @@ typedef struct SerialGyro
 
 typedef struct SerialUss
 {
+    char new_data;
     char port;
     float distance_cm;
 } SerialUss;
@@ -30,10 +31,6 @@ typedef struct SerialUss
 int gyro_new_data = 0;
 SerialGyro data_gyro;
 
-int uss_new_data[USS_MAX_NB];
-for(int i=0;i<USS_MAX_NB;i++){
-    uss_new_data[i] = 0;
-}
 SerialUss data_uss[USS_MAX_NB];
 
 int motor_new_data = 0;
@@ -125,6 +122,8 @@ int init_uss(const int fd, char port){
         return -1;
     }
 
+    data_uss[port-1-4].new_data = 0x0;
+
     char ext_id_uss = ((port<<4)+USS_DEV_ID);
     char uss_msg[HEADER_MSG_SIZE + USS_MSG_SIZE]
     =   {0xff, 0x55, USS_MSG_SIZE,
@@ -169,9 +168,9 @@ int decode_data(){
                 int port = ((ext_id & 0xf0) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
                     data_uss[port-1-4].distance_cm = *(float*)(makeblock_response_msg+4);
+                    data_uss[port-1-4].new_data = 0x1;
                     ret = 0;
                 }
-                uss_new_data[port-1-4] = 1;
                 piUnlock (USS_MUTEX) ;
                 break;
             case GYRO_DEV_ID:
@@ -350,8 +349,26 @@ int decode_data(){
     return ret;
 }
 
-int is_gyro_new_data(){return gyro_new_data;}
-int is_motor_new_data(){return motor_new_data;}
+int is_gyro_new_data(){
+    piLock (IMU_MUTEX);
+    int new_data = gyro_new_data;
+    piUnlock (IMU_MUTEX) ;
+    return new_data;
+}
+
+int is_motor_new_data(){
+    piLock (MOTOR_MUTEX);
+    int new_data = motor_new_data;
+    piUnlock (MOTOR_MUTEX);
+    return new_data;
+}
+
+int is_ultrasonic_new_data(char port){
+    piLock (USS_MUTEX);
+    char new_data = data_uss[port-1-4].new_data;
+    piUnlock (USS_MUTEX) ;
+    return new_data;
+}
 
 float get_gyro_roll(){
     piLock (IMU_MUTEX) ;
@@ -449,7 +466,7 @@ float get_motor_speed(int port){
 float get_uss(int port){
     piLock (USS_MUTEX);
     float distance_cm = data_uss[port-1-4].distance_cm;
-    uss_new_data[port-1-4] = 0;
+    data_uss[port-1-4].new_data = 0x0;
     piUnlock (USS_MUTEX);
     return distance_cm;
 }
