@@ -73,6 +73,7 @@ int init_uss(const int fd, char port);
 
 int is_gyro_new_data();
 int is_motor_new_data();
+int is_ultrasonic_new_data(char port);
 
 float get_gyro_roll();
 float get_gyro_pitch();
