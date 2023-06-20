@@ -69,9 +69,11 @@ int init_gyro(const int fd, char port);
 int stop_gyro(const int fd, char port);
 int init_serial(const char * device, int baud);
 int init_two_motors_info(const int fd, char motor_1, char motor_2);
+int init_uss(const int fd, char port);
 
 int is_gyro_new_data();
 int is_motor_new_data();
+int is_ultrasonic_new_data(char port);
 
 float get_gyro_roll();
 float get_gyro_pitch();
@@ -85,7 +87,7 @@ float get_gyro_linear_z();
 
 int   get_motor_position(int port);
 float get_motor_speed(int port);
-float get_uss(int port);
+float get_uss_cm(int port);
 
 // int request_gyro_all_axes(const int fd);
 // int request_gyro(const int fd, char axis);
