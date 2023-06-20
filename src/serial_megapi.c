@@ -463,7 +463,7 @@ float get_motor_speed(int port){
     // return encoders_speed[port-1];
 }
 
-float get_uss(int port){
+float get_uss_cm(int port){
     piLock (USS_MUTEX);
     float distance_cm = data_uss[port-1-4].distance_cm;
     data_uss[port-1-4].new_data = 0x0;

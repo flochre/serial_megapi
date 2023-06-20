@@ -87,7 +87,7 @@ float get_gyro_linear_z();
 
 int   get_motor_position(int port);
 float get_motor_speed(int port);
-float get_uss(int port);
+float get_uss_cm(int port);
 
 // int request_gyro_all_axes(const int fd);
 // int request_gyro(const int fd, char axis);
