@@ -75,6 +75,7 @@ int is_gyro_new_data();
 int is_motor_new_data();
 int is_ultrasonic_new_data(char port);
 
+int get_orientation(float * ypr);
 float get_gyro_roll();
 float get_gyro_pitch();
 float get_gyro_yaw();

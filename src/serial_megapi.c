@@ -1,5 +1,7 @@
 #include "serial_megapi.h"
 
+#include <math.h>
+
 char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
 
 union
@@ -279,70 +281,29 @@ int decode_data(){
         0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1]
         && 0xd == makeblock_response_msg[48] && 0xa == makeblock_response_msg[49]
     ){
-        char data_type[9] = {
-            makeblock_response_msg[3], 
-            makeblock_response_msg[8], 
-            makeblock_response_msg[13], 
-            makeblock_response_msg[18],
-            makeblock_response_msg[23],
-            makeblock_response_msg[28],
-            makeblock_response_msg[33],
-            makeblock_response_msg[38],
-            makeblock_response_msg[43]
-        };
-        // printf("New Gyro data available \n");
+        ret = 0;
         piLock (IMU_MUTEX) ;
-        for(int value = 0; value < 9; value++){
-            // if(DATA_TYPE_DOUBLE == data_type[value]){
-            if(DATA_TYPE_FLOAT == data_type[value]){
-                
-                switch (value)
-                {
-                case 0x0:
-                    data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x1:
-                    data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x2:
-                    data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x3:
-                    data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x4:
-                    data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x5:
-                    data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x6:
-                    data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x7:
-                    data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x8:
-                    data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
+        data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
+        data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
 
-                default:
-                ret = -1;
-                    break;
-                }
-            }
+        // this check that the value is not error 0 and the value is not above 2Pi
+        // it should be between pi and -pi
+        // I don't know why but it happens only for the yaw..
+        if(fabs( *(float*)(makeblock_response_msg+4 + 5*2)) > 0.000001 && fabs( *(float*)(makeblock_response_msg+4 + 5*2) < 6.28)){
+            data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*2);
         }
+
+        data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*3);
+        data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*4);
+        data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*5);
+
+        data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*6);
+        data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*7);
+        data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*8);
+
         gyro_new_data = 1;
         piUnlock (IMU_MUTEX) ;
+        // printf(" after : %f \n",  data_gyro.yaw_);
 
     }
 
@@ -368,6 +329,18 @@ int is_ultrasonic_new_data(char port){
     char new_data = data_uss[port-1-4].new_data;
     piUnlock (USS_MUTEX) ;
     return new_data;
+}
+
+int get_orientation(float * ypr){
+    int ret = 0x0;
+    piLock (IMU_MUTEX) ;
+    ret = 0x1;
+    ypr[0] = data_gyro.yaw_;
+    ypr[1] = data_gyro.pitch_;
+    ypr[2] = data_gyro.roll_;
+    gyro_new_data = 0x0;
+    piUnlock (IMU_MUTEX) ;
+    return ret;
 }
 
 float get_gyro_roll(){
