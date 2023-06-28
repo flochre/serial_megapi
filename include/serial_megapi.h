@@ -76,6 +76,7 @@ int is_motor_new_data();
 int is_ultrasonic_new_data(char port);
 
 int get_orientation(float * ypr);
+int get_all_imu_infos(float * ypr, float * ang_vel, float * lin_acc);
 float get_gyro_roll();
 float get_gyro_pitch();
 float get_gyro_yaw();
@@ -88,6 +89,7 @@ float get_gyro_linear_z();
 
 int   get_motor_position(int port);
 float get_motor_speed(int port);
+int get_uss_cm_safe(float * value_cm, int port);
 float get_uss_cm(int port);
 
 // int request_gyro_all_axes(const int fd);

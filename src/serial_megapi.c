@@ -153,6 +153,7 @@ int decode_data(){
             case MOTOR_DEV_ID & 0xf:
 
                 piLock (MOTOR_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 // ext_id_motor = ((motor<<4)+MOTOR_DEV_ID)&0xff;
                 int motor = ((ext_id - MOTOR_DEV_ID) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
@@ -166,21 +167,25 @@ int decode_data(){
                     // printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
                     ret = 0;
                 }
+                piUnlock (OTHER_MUTEX);
                 piUnlock (MOTOR_MUTEX);
                 break;
             
             case USS_DEV_ID:
                 piLock (USS_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 int port = ((ext_id & 0xf0) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
                     data_uss[port-1-4].distance_cm = *(float*)(makeblock_response_msg+4);
                     data_uss[port-1-4].new_data = 0x1;
                     ret = 0;
                 }
+                piUnlock (OTHER_MUTEX) ;
                 piUnlock (USS_MUTEX) ;
                 break;
             case GYRO_DEV_ID:
                 piLock (IMU_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 char axis = ((ext_id & 0xf0) >> 4) - GYRO_PORT;
                 if(DATA_TYPE_FLOAT == data_type){
                     if(GYRO_AXE_X == axis){
@@ -195,6 +200,7 @@ int decode_data(){
                     }
                     
                 }
+                piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
 
@@ -213,6 +219,7 @@ int decode_data(){
         switch (dev_id) {
             case GYRO_DEV_ID:
                 piLock (IMU_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 for(int axis = 1; axis < 4; axis++){
                     if(DATA_TYPE_FLOAT == data_type[axis - 1]){
                         if(GYRO_AXE_X == axis){
@@ -227,6 +234,7 @@ int decode_data(){
                     }
                 }
                 ret = 0;
+                piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
 
@@ -242,6 +250,7 @@ int decode_data(){
         char data_type[4] = {makeblock_response_msg[3], makeblock_response_msg[8], makeblock_response_msg[13], makeblock_response_msg[18]};
 
         piLock (MOTOR_MUTEX) ;
+        piLock (OTHER_MUTEX) ;
         int motor = ((ext_id & 0xf0) >> 4);
         char motor_1 = motor & 0x3;
         char motor_2 = (motor & 0xc) >> 2;
@@ -279,6 +288,7 @@ int decode_data(){
             }
         }
         motor_new_data = 1;
+        piUnlock (OTHER_MUTEX) ;
         piUnlock (MOTOR_MUTEX) ;
 
     } else if (
@@ -287,6 +297,7 @@ int decode_data(){
     ){
         ret = 0;
         piLock (IMU_MUTEX) ;
+        piLock (OTHER_MUTEX) ;
         // data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
         // data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
 
@@ -300,7 +311,7 @@ int decode_data(){
         float epsilon = 0.000001;
         float max_angle = 6.28;
         float max_speed = 6.28;
-        float max_accelration = 12;
+        float max_acceleration = 12;
         if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*0), epsilon, max_angle)){
             data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
         }
@@ -323,17 +334,18 @@ int decode_data(){
 
         }
 
-        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*6), epsilon, max_accelration)){
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*6), epsilon, max_acceleration)){
             data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*6);
         }
-        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*7), epsilon, max_accelration)){
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*7), epsilon, max_acceleration)){
             data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*7);
         }
-        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*8), epsilon, max_accelration)){
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*8), epsilon, max_acceleration)){
             data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*8);
         }
 
         gyro_new_data = 1;
+        piUnlock (OTHER_MUTEX) ;
         piUnlock (IMU_MUTEX) ;
         // printf(" after : %f \n",  data_gyro.yaw_);
 
@@ -370,6 +382,27 @@ int get_orientation(float * ypr){
     ypr[0] = data_gyro.yaw_;
     ypr[1] = data_gyro.pitch_;
     ypr[2] = data_gyro.roll_;
+    gyro_new_data = 0x0;
+    piUnlock (IMU_MUTEX) ;
+    return ret;
+}
+
+int get_all_imu_infos(float * ypr, float * ang_vel, float * lin_acc){
+    int ret = 0x0;
+    piLock (IMU_MUTEX) ;
+    ret = 0x1;
+
+    ypr[0] = data_gyro.yaw_;
+    ypr[1] = data_gyro.pitch_;
+    ypr[2] = data_gyro.roll_;
+
+    ang_vel[0] = data_gyro.ang_x_;
+    ang_vel[1] = data_gyro.ang_y_;
+    ang_vel[2] = data_gyro.ang_z_;
+
+    lin_acc[0] = data_gyro.lin_x_;
+    lin_acc[1] = data_gyro.lin_y_;
+    lin_acc[2] = data_gyro.lin_z_;
     gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return ret;
@@ -468,6 +501,16 @@ float get_motor_speed(int port){
     // return encoders_speed[port-1];
 }
 
+int get_uss_cm_safe(float * value_cm, int port){
+    int ret = 0x0;
+    piLock (USS_MUTEX);
+    ret = 0x1;
+    (*value_cm) = data_uss[port-1-4].distance_cm;
+    data_uss[port-1-4].new_data = 0x0;
+    piUnlock (USS_MUTEX);
+    return ret;
+}
+
 float get_uss_cm(int port){
     piLock (USS_MUTEX);
     float distance_cm = data_uss[port-1-4].distance_cm;
@@ -536,6 +579,7 @@ int request_uss(const int fd, char port){
 void receive_msg(int fd){
     int ii = 0; 
 
+    piLock (OTHER_MUTEX);
     while (serialDataAvail (fd)){
         makeblock_response_msg[ii] = serialGetchar (fd);
         // printf (" -> %3d", makeblock_response_msg[ii]) ;
@@ -549,6 +593,7 @@ void receive_msg(int fd){
 
         ii++;
     }
+    piUnlock (OTHER_MUTEX);
 
     if(ii >= MAKEBLOCK_MSG_SIZE ){
         // printf ("\ndata_received of size: %d", ii) ;
