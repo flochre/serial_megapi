@@ -134,6 +134,10 @@ int init_uss(const int fd, char port){
     return send_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
 }
 
+int check_valid_value(float value_to_check, float epsilon, float max){
+    return (fabs(value_to_check) > epsilon && fabs(value_to_check) < max);
+}
+
 int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
@@ -283,23 +287,51 @@ int decode_data(){
     ){
         ret = 0;
         piLock (IMU_MUTEX) ;
-        data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
-        data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
+        // data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
+        // data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
 
         // this check that the value is not error 0 and the value is not above 2Pi
         // it should be between pi and -pi
         // I don't know why but it happens only for the yaw..
-        if(fabs( *(float*)(makeblock_response_msg+4 + 5*2)) > 0.000001 && fabs( *(float*)(makeblock_response_msg+4 + 5*2) < 6.28)){
+        // if(fabs( *(float*)(makeblock_response_msg+4 + 5*2)) > 0.000001 && fabs( *(float*)(makeblock_response_msg+4 + 5*2) < 6.28)){
+        //     data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*2);
+        // }
+
+        float epsilon = 0.000001;
+        float max_angle = 6.28;
+        float max_speed = 6.28;
+        float max_accelration = 12;
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*0), epsilon, max_angle)){
+            data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*1), epsilon, max_angle)){
+            data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*2), epsilon, max_angle)){
             data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*2);
         }
 
-        data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*3);
-        data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*4);
-        data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*5);
 
-        data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*6);
-        data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*7);
-        data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*8);
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*3), epsilon, max_speed)){
+            data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*3);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*4), epsilon, max_speed)){
+            data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*4);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*5), epsilon, max_speed)){
+            data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*5);
+
+        }
+
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*6), epsilon, max_accelration)){
+            data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*6);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*7), epsilon, max_accelration)){
+            data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*7);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*8), epsilon, max_accelration)){
+            data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*8);
+        }
 
         gyro_new_data = 1;
         piUnlock (IMU_MUTEX) ;
