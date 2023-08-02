@@ -1,5 +1,7 @@
 #include "serial_megapi.h"
 
+#include <math.h>
+
 char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
 
 union
@@ -132,6 +134,10 @@ int init_uss(const int fd, char port){
     return send_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
 }
 
+int check_valid_value(float value_to_check, float epsilon, float max){
+    return (fabs(value_to_check) > epsilon && fabs(value_to_check) < max);
+}
+
 int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
@@ -147,6 +153,7 @@ int decode_data(){
             case MOTOR_DEV_ID & 0xf:
 
                 piLock (MOTOR_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 // ext_id_motor = ((motor<<4)+MOTOR_DEV_ID)&0xff;
                 int motor = ((ext_id - MOTOR_DEV_ID) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
@@ -160,21 +167,25 @@ int decode_data(){
                     // printf("\nmotor pos decoder/ %d : %d",  motor, encoders_pos[motor-1]);
                     ret = 0;
                 }
+                piUnlock (OTHER_MUTEX);
                 piUnlock (MOTOR_MUTEX);
                 break;
             
             case USS_DEV_ID:
                 piLock (USS_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 int port = ((ext_id & 0xf0) >> 4);
                 if(DATA_TYPE_FLOAT == data_type){
                     data_uss[port-1-4].distance_cm = *(float*)(makeblock_response_msg+4);
                     data_uss[port-1-4].new_data = 0x1;
                     ret = 0;
                 }
+                piUnlock (OTHER_MUTEX) ;
                 piUnlock (USS_MUTEX) ;
                 break;
             case GYRO_DEV_ID:
                 piLock (IMU_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 char axis = ((ext_id & 0xf0) >> 4) - GYRO_PORT;
                 if(DATA_TYPE_FLOAT == data_type){
                     if(GYRO_AXE_X == axis){
@@ -189,6 +200,7 @@ int decode_data(){
                     }
                     
                 }
+                piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
 
@@ -207,6 +219,7 @@ int decode_data(){
         switch (dev_id) {
             case GYRO_DEV_ID:
                 piLock (IMU_MUTEX) ;
+                piLock (OTHER_MUTEX) ;
                 for(int axis = 1; axis < 4; axis++){
                     if(DATA_TYPE_FLOAT == data_type[axis - 1]){
                         if(GYRO_AXE_X == axis){
@@ -221,6 +234,7 @@ int decode_data(){
                     }
                 }
                 ret = 0;
+                piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
 
@@ -236,6 +250,7 @@ int decode_data(){
         char data_type[4] = {makeblock_response_msg[3], makeblock_response_msg[8], makeblock_response_msg[13], makeblock_response_msg[18]};
 
         piLock (MOTOR_MUTEX) ;
+        piLock (OTHER_MUTEX) ;
         int motor = ((ext_id & 0xf0) >> 4);
         char motor_1 = motor & 0x3;
         char motor_2 = (motor & 0xc) >> 2;
@@ -273,76 +288,66 @@ int decode_data(){
             }
         }
         motor_new_data = 1;
+        piUnlock (OTHER_MUTEX) ;
         piUnlock (MOTOR_MUTEX) ;
 
     } else if (
         0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1]
         && 0xd == makeblock_response_msg[48] && 0xa == makeblock_response_msg[49]
     ){
-        char data_type[9] = {
-            makeblock_response_msg[3], 
-            makeblock_response_msg[8], 
-            makeblock_response_msg[13], 
-            makeblock_response_msg[18],
-            makeblock_response_msg[23],
-            makeblock_response_msg[28],
-            makeblock_response_msg[33],
-            makeblock_response_msg[38],
-            makeblock_response_msg[43]
-        };
-        // printf("New Gyro data available \n");
+        ret = 0;
         piLock (IMU_MUTEX) ;
-        for(int value = 0; value < 9; value++){
-            // if(DATA_TYPE_DOUBLE == data_type[value]){
-            if(DATA_TYPE_FLOAT == data_type[value]){
-                
-                switch (value)
-                {
-                case 0x0:
-                    data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x1:
-                    data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x2:
-                    data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x3:
-                    data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x4:
-                    data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x5:
-                    data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x6:
-                    data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x7:
-                    data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
-                case 0x8:
-                    data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*value);
-                    ret = 0;
-                    break;
+        piLock (OTHER_MUTEX) ;
+        // data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
+        // data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
 
-                default:
-                ret = -1;
-                    break;
-                }
-            }
+        // this check that the value is not error 0 and the value is not above 2Pi
+        // it should be between pi and -pi
+        // I don't know why but it happens only for the yaw..
+        // if(fabs( *(float*)(makeblock_response_msg+4 + 5*2)) > 0.000001 && fabs( *(float*)(makeblock_response_msg+4 + 5*2) < 6.28)){
+        //     data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*2);
+        // }
+
+        float epsilon = 0.000001;
+        float max_angle = 6.28;
+        float max_speed = 6.28;
+        float max_acceleration = 12;
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*0), epsilon, max_angle)){
+            data_gyro.roll_ = *(float*)(makeblock_response_msg+4 + 5*0);
         }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*1), epsilon, max_angle)){
+            data_gyro.pitch_ = *(float*)(makeblock_response_msg+4 + 5*1);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*2), epsilon, max_angle)){
+            data_gyro.yaw_ = *(float*)(makeblock_response_msg+4 + 5*2);
+        }
+
+
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*3), epsilon, max_speed)){
+            data_gyro.ang_x_ = *(float*)(makeblock_response_msg+4 + 5*3);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*4), epsilon, max_speed)){
+            data_gyro.ang_y_ = *(float*)(makeblock_response_msg+4 + 5*4);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*5), epsilon, max_speed)){
+            data_gyro.ang_z_ = *(float*)(makeblock_response_msg+4 + 5*5);
+
+        }
+
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*6), epsilon, max_acceleration)){
+            data_gyro.lin_x_ = *(float*)(makeblock_response_msg+4 + 5*6);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*7), epsilon, max_acceleration)){
+            data_gyro.lin_y_ = *(float*)(makeblock_response_msg+4 + 5*7);
+        }
+        if(check_valid_value(*(float*)(makeblock_response_msg+4 + 5*8), epsilon, max_acceleration)){
+            data_gyro.lin_z_ = *(float*)(makeblock_response_msg+4 + 5*8);
+        }
+
         gyro_new_data = 1;
+        piUnlock (OTHER_MUTEX) ;
         piUnlock (IMU_MUTEX) ;
+        // printf(" after : %f \n",  data_gyro.yaw_);
 
     }
 
@@ -368,6 +373,39 @@ int is_ultrasonic_new_data(char port){
     char new_data = data_uss[port-1-4].new_data;
     piUnlock (USS_MUTEX) ;
     return new_data;
+}
+
+int get_orientation(float * ypr){
+    int ret = 0x0;
+    piLock (IMU_MUTEX) ;
+    ret = 0x1;
+    ypr[0] = data_gyro.yaw_;
+    ypr[1] = data_gyro.pitch_;
+    ypr[2] = data_gyro.roll_;
+    gyro_new_data = 0x0;
+    piUnlock (IMU_MUTEX) ;
+    return ret;
+}
+
+int get_all_imu_infos(float * ypr, float * ang_vel, float * lin_acc){
+    int ret = 0x0;
+    piLock (IMU_MUTEX) ;
+    ret = 0x1;
+
+    ypr[0] = data_gyro.yaw_;
+    ypr[1] = data_gyro.pitch_;
+    ypr[2] = data_gyro.roll_;
+
+    ang_vel[0] = data_gyro.ang_x_;
+    ang_vel[1] = data_gyro.ang_y_;
+    ang_vel[2] = data_gyro.ang_z_;
+
+    lin_acc[0] = data_gyro.lin_x_;
+    lin_acc[1] = data_gyro.lin_y_;
+    lin_acc[2] = data_gyro.lin_z_;
+    gyro_new_data = 0x0;
+    piUnlock (IMU_MUTEX) ;
+    return ret;
 }
 
 float get_gyro_roll(){
@@ -463,6 +501,16 @@ float get_motor_speed(int port){
     // return encoders_speed[port-1];
 }
 
+int get_uss_cm_safe(float * value_cm, int port){
+    int ret = 0x0;
+    piLock (USS_MUTEX);
+    ret = 0x1;
+    (*value_cm) = data_uss[port-1-4].distance_cm;
+    data_uss[port-1-4].new_data = 0x0;
+    piUnlock (USS_MUTEX);
+    return ret;
+}
+
 float get_uss_cm(int port){
     piLock (USS_MUTEX);
     float distance_cm = data_uss[port-1-4].distance_cm;
@@ -531,6 +579,7 @@ int request_uss(const int fd, char port){
 void receive_msg(int fd){
     int ii = 0; 
 
+    piLock (OTHER_MUTEX);
     while (serialDataAvail (fd)){
         makeblock_response_msg[ii] = serialGetchar (fd);
         // printf (" -> %3d", makeblock_response_msg[ii]) ;
@@ -544,6 +593,7 @@ void receive_msg(int fd){
 
         ii++;
     }
+    piUnlock (OTHER_MUTEX);
 
     if(ii >= MAKEBLOCK_MSG_SIZE ){
         // printf ("\ndata_received of size: %d", ii) ;
