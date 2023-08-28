@@ -3,7 +3,7 @@ project(serial_megapi VERSION 1.4 DESCRIPTION "lib to communicate with the megap
 include(GNUInstallDirs)
 
 set(package serial_megapi)
-
+find_package(ament_cmake REQUIRED)
 # find_package(crypt REQUIRED)
 # find_package(RT REQUIRED)
 # find_package(Threads REQUIRED)
@@ -43,3 +43,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/${package}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${package})
+
+## EXPORTS
+ament_package()
