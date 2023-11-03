@@ -2,8 +2,8 @@
 Changelog for package serial_megapi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.0 (2023-11-04)
+------------------
 * update serial_megapi to work with usb serial
 
 1.4.2 (2023-11-03)
