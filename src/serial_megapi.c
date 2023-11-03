@@ -80,6 +80,7 @@ int stop_gyro(const int fd, char port){
     return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
 }
 
+int received_version = 0;
 int init_serial(const char * device, int baud){
     if (serial_initialized_){
         return fd_;
@@ -96,8 +97,14 @@ int init_serial(const char * device, int baud){
             return fd_;
         }
 
-        serial_initialized_ = 1;
+        request_version();
         piThreadCreate (read_serial) ;
+
+        while(!received_version){
+            delay(3);
+        }
+
+        serial_initialized_ = 1;
 
         return fd_;
     }
@@ -576,14 +583,30 @@ int request_uss(const int fd, char port){
     return send_data(fd, uss_msg, HEADER_MSG_SIZE + USS_MSG_SIZE);
 }
 
+int request_version(){
+
+    // char ext_id_version = VERSION_DEV_ID;
+    char version_msg[HEADER_MSG_SIZE + VERSION_MSG_SIZE]
+    =   {0xff, 0x55, VERSION_MSG_SIZE,
+        0x0, ACTION_GET, VERSION_DEV_ID};
+
+    return send_data(fd_, version_msg, HEADER_MSG_SIZE + VERSION_MSG_SIZE);
+}
+
 void receive_msg(int fd){
-    int ii = 0; 
+    int ii = 0;
+    int print_version = 0x0;
 
     piLock (OTHER_MUTEX);
     while (serialDataAvail (fd)){
         makeblock_response_msg[ii] = serialGetchar (fd);
         // printf (" -> %3d", makeblock_response_msg[ii]) ;
         fflush (stdout) ;
+
+        if(!received_version && 0x56 == makeblock_response_msg[ii]){
+            received_version = 0x1;
+            print_version = 0x1;
+        }
 
         // In the case of USS sensor the header is send before the USS data is there
         // therefore we need to wait for the data
@@ -596,6 +619,9 @@ void receive_msg(int fd){
     piUnlock (OTHER_MUTEX);
 
     if(ii >= MAKEBLOCK_MSG_SIZE ){
+        if(0x1 == print_version){
+            fprintf("%s", makeblock_response_msg);
+        }
         // printf ("\ndata_received of size: %d", ii) ;
         decode_data();
     }
