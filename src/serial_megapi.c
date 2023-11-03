@@ -100,7 +100,7 @@ int init_serial(const char * device, int baud){
         piThreadCreate (read_serial) ;
 
         int count = 0;
-        while(!received_version && count < 10){
+        while(!received_version && count < 20){
             request_version();
             count++;
             delay(100);
