@@ -2,6 +2,9 @@
 Changelog for package serial_megapi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.4.1 (2023-08-28)
 ------------------
 * bugfix rosdep dependencies error
