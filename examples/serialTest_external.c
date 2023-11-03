@@ -39,22 +39,14 @@ int main ()
   int count ;
   unsigned int nextTime ;
 
-  // if ((fd = serialOpen ("/dev/ttyAMA0", 115200)) < 0)
-  // {
-  //   fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
-  //   return 1 ;
-  // }
-
-  // if (wiringPiSetup () == -1)
-  // {
-  //   fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
-  //   return 1 ;
-  // }
-
   if ((fd = init_serial("/dev/ttyAMA0", 115200)) < 0){
+  // if ((fd = init_serial("/dev/megapi", 115200)) < 0){
     fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
     return 1 ;
   }
+
+  int uss_port = 0x7;
+  init_uss(fd, uss_port);
 
   nextTime = millis () + 300 ;
 
@@ -62,7 +54,7 @@ int main ()
   {
     if (millis () > nextTime)
     {
-      printf ("\nOut: %3d: %d", count, fd) ;
+      printf ("\nOut: %3d / %d / ", count, fd) ;
       fflush (stdout) ;
 
       // write (fd, gyro_msg, 8) ;
@@ -114,9 +106,9 @@ int main ()
       ++count ;
     }
 
-    // delay (3);
-
-    // receive_msg(fd);
+    if(is_ultrasonic_new_data(uss_port)){
+      printf("uss_cm : %f \n", get_uss_cm(uss_port));
+    }
 
   }
 
