@@ -41,6 +41,8 @@
   #define ENCODER_BOARD_POS_MOTION_MOVETO  0x06
 #define TWO_ENCODERS_POS_SPEED  0x3f // 63
 
+#define VERSION_DEV_ID      0x0
+#define VERSION_MSG_SIZE    0x3
 #define USS_DEV_ID          0x1
 #define USS_MSG_SIZE        0x4
 #define USS_MAX_NB          0x4
