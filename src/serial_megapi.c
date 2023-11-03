@@ -151,6 +151,11 @@ int check_valid_value(float value_to_check, float epsilon, float max){
 int decode_data(){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
+        && VERSION_DEV_ID == makeblock_response_msg[2] && DATA_TYPE_STRING == makeblock_response_msg[3]
+    ){
+        received_version = 0x1;
+        printf("\nArduino Version :%s", &makeblock_response_msg[4]);
+    } else if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
         && 0xd == makeblock_response_msg[8] && 0xa == makeblock_response_msg[9]
     ){
         char ext_id = makeblock_response_msg[2];
@@ -610,15 +615,10 @@ void receive_msg(int fd){
         // the Arduino will reset and send the string Version over serial
         // so we need to wait for it before behing able to start
         // therefore we need to read also on other serials
-        if(!received_version && 
-            (0x56 == makeblock_response_msg[ii] || VERSION_DEV_ID == makeblock_response_msg[3])
-        ){
+        if(!received_version && 0x56 == makeblock_response_msg[0]){
             received_version = 0x1;
             if (0x56 == makeblock_response_msg[ii]){
                 print_version = 0x1;
-            }
-            if (VERSION_DEV_ID == makeblock_response_msg[3]){
-                print_version = 0x2;
             }
         }
 
@@ -637,10 +637,7 @@ void receive_msg(int fd){
             // printf ("\ndata_received of size: %d", ii) ;
             decode_data();
         } else if(0x1 == print_version){
-            // makeblock_response_msg[ii] = '\n';
             printf("Arduino %s", makeblock_response_msg);
-        } else if (0x2 == print_version){
-            printf("\nArduino Version :%s", &makeblock_response_msg[4]);
         }
     }
 
