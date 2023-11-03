@@ -97,7 +97,6 @@ int init_serial(const char * device, int baud){
             return fd_;
         }
 
-        delay(3);
         request_version();
         piThreadCreate (read_serial) ;
 
