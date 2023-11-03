@@ -97,10 +97,13 @@ int init_serial(const char * device, int baud){
             return fd_;
         }
 
+        delay(3);
         request_version();
         piThreadCreate (read_serial) ;
 
-        while(!received_version){
+        int count = 0;
+        while(!received_version && count < 500){
+            count++;
             delay(3);
         }
 
@@ -603,9 +606,20 @@ void receive_msg(int fd){
         // printf (" -> %3d", makeblock_response_msg[ii]) ;
         fflush (stdout) ;
 
-        if(!received_version && 0x56 == makeblock_response_msg[ii]){
+        // in the case were we are receiving the serial via USB
+        // the Arduino will reset and send the string Version over serial
+        // so we need to wait for it before behing able to start
+        // therefore we need to read also on other serials
+        if(!received_version && 
+            (0x56 == makeblock_response_msg[ii] || VERSION_DEV_ID == makeblock_response_msg[3])
+        ){
             received_version = 0x1;
-            print_version = 0x1;
+            if (0x56 == makeblock_response_msg[ii]){
+                print_version = 0x1;
+            }
+            if (VERSION_DEV_ID == makeblock_response_msg[3]){
+                print_version = 0x2;
+            }
         }
 
         // In the case of USS sensor the header is send before the USS data is there
@@ -619,12 +633,14 @@ void receive_msg(int fd){
     piUnlock (OTHER_MUTEX);
 
     if(ii >= MAKEBLOCK_MSG_SIZE ){
-        if(0x1 == print_version){
-            makeblock_response_msg[ii] = '\n';
-            printf("%s", makeblock_response_msg);
-        } else {
+        if(0x0 == print_version){
             // printf ("\ndata_received of size: %d", ii) ;
             decode_data();
+        } else if(0x1 == print_version){
+            // makeblock_response_msg[ii] = '\n';
+            printf("Arduino %s", makeblock_response_msg);
+        } else if (0x2 == print_version){
+            printf("\nArduino Version :%s", &makeblock_response_msg[4]);
         }
     }
 
