@@ -100,6 +100,7 @@ int request_motor_position(const int fd, char motor);
 int request_motor_speed(const int fd, char motor);
 int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2);
 int request_uss(const int fd, char port);
+int request_version();
 
 void receive_msg(const int fd);
 
