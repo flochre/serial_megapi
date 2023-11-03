@@ -41,6 +41,8 @@
   #define ENCODER_BOARD_POS_MOTION_MOVETO  0x06
 #define TWO_ENCODERS_POS_SPEED  0x3f // 63
 
+#define VERSION_DEV_ID      0x0
+#define VERSION_MSG_SIZE    0x3
 #define USS_DEV_ID          0x1
 #define USS_MSG_SIZE        0x4
 #define USS_MAX_NB          0x4
@@ -48,6 +50,7 @@
 #define USS_LAST_SLOT       USS_FIRST_SLOT + USS_MAX_NB - 1
 
 #define DATA_TYPE_FLOAT     0x2
+#define DATA_TYPE_STRING    0x4
 #define DATA_TYPE_DOUBLE    0x5
 #define DATA_TYPE_LONG      0x6
 
@@ -98,6 +101,7 @@ int request_motor_position(const int fd, char motor);
 int request_motor_speed(const int fd, char motor);
 int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2);
 int request_uss(const int fd, char port);
+int request_version();
 
 void receive_msg(const int fd);
 
