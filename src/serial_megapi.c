@@ -97,13 +97,13 @@ int init_serial(const char * device, int baud){
             return fd_;
         }
 
-        request_version();
         piThreadCreate (read_serial) ;
 
         int count = 0;
-        while(!received_version && count < 500){
+        while(!received_version && count < 10){
+            request_version();
             count++;
-            delay(3);
+            delay(100);
         }
 
         serial_initialized_ = 1;
