@@ -620,10 +620,12 @@ void receive_msg(int fd){
 
     if(ii >= MAKEBLOCK_MSG_SIZE ){
         if(0x1 == print_version){
-            fprintf("%s", makeblock_response_msg);
+            makeblock_response_msg[ii] = '\n';
+            printf("%s", makeblock_response_msg);
+        } else {
+            // printf ("\ndata_received of size: %d", ii) ;
+            decode_data();
         }
-        // printf ("\ndata_received of size: %d", ii) ;
-        decode_data();
     }
 
 }
