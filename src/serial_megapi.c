@@ -214,6 +214,7 @@ int decode_data(){
                     }
                     
                 }
+                gyro_new_data = 1;
                 piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
@@ -248,6 +249,7 @@ int decode_data(){
                     }
                 }
                 ret = 0;
+                gyro_new_data = 1;
                 piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
@@ -425,6 +427,7 @@ int get_all_imu_infos(float * ypr, float * ang_vel, float * lin_acc){
 float get_gyro_roll(){
     piLock (IMU_MUTEX) ;
     float x = data_gyro.roll_;
+    gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return x;
 }
@@ -432,6 +435,7 @@ float get_gyro_roll(){
 float get_gyro_pitch(){
     piLock (IMU_MUTEX) ;
     float y = data_gyro.pitch_;
+    gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return y;
 }
@@ -439,6 +443,7 @@ float get_gyro_pitch(){
 float get_gyro_yaw(){
     piLock (IMU_MUTEX) ;
     float z = data_gyro.yaw_;
+    gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return z;
 }
@@ -533,18 +538,18 @@ float get_uss_cm(int port){
     return distance_cm;
 }
 
-// int request_gyro_all_axes(const int fd){
-//     return request_gyro(fd, GYRO_ALL_AXES);
-// }
+int request_gyro_all_axes(const int fd){
+    return request_gyro(fd, GYRO_ALL_AXES);
+}
 
-// int request_gyro(const int fd, char axis){
-//     char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
-//     char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
-//     =   {0xff, 0x55, GYRO_MSG_SIZE, 
-//         ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
+int request_gyro(const int fd, char axis){
+    char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
+    char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
+    =   {0xff, 0x55, GYRO_MSG_SIZE, 
+        ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
 
-//     return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
-// }
+    return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
+}
 
 int request_motor_info(const int fd, char motor, char pos_speed){
 
