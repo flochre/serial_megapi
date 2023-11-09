@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(serial_megapi VERSION 1.4 DESCRIPTION "lib to communicate with the megapi over serial")
+project(serial_megapi VERSION 1.5 DESCRIPTION "lib to communicate with the megapi over serial")
 include(GNUInstallDirs)
 
 set(package serial_megapi)
@@ -41,5 +41,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/${package}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${package})
