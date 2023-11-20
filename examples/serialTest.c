@@ -111,7 +111,7 @@ int main ()
 
     delay (3);
 
-    receive_msg(fd);
+    // receive_msg(fd);
 
   }
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(serial_megapi VERSION 1.5 DESCRIPTION "lib to communicate with the megapi over serial")
+project(serial_megapi VERSION 1.6 DESCRIPTION "lib to communicate with the megapi over serial")
 include(GNUInstallDirs)
 
 set(package serial_megapi)
@@ -25,12 +25,16 @@ target_link_libraries(serialTest ${PROJECT_NAME} wiringPi wiringPiDev pthread m 
 add_executable(serialTestExt examples/serialTest_external.c)
 target_link_libraries(serialTestExt ${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)
 
+add_executable(serialTestRos examples/serialTest_ros2.c)
+target_link_libraries(serialTestRos ${PROJECT_NAME} wiringPi wiringPiDev pthread m crypt rt)
+
 file(GLOB_RECURSE PUBLIC_INCLUDE_FILES "include/*.h*")
 
 target_include_directories(${PROJECT_NAME} PRIVATE .)
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_include_directories(serialTest PUBLIC include)
 target_include_directories(serialTestExt PUBLIC include)
+target_include_directories(serialTestRos PUBLIC include)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
