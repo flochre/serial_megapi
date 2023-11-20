@@ -95,15 +95,15 @@ float get_motor_speed(int port);
 int get_uss_cm_safe(float * value_cm, int port);
 float get_uss_cm(int port);
 
-// int request_gyro_all_axes(const int fd);
-// int request_gyro(const int fd, char axis);
+int request_gyro_all_axes(const int fd);
+int request_gyro(const int fd, char axis);
 int request_motor_position(const int fd, char motor);
 int request_motor_speed(const int fd, char motor);
 int request_two_motors_pos_speed(const int fd, char motor_1, char motor_2);
 int request_uss(const int fd, char port);
 int request_version();
 
-void receive_msg(const int fd);
+void read_serial_megapi(void);
 
 int reset_motors(const int fd);
 int set_speed(const int fd, char motor, int speed);

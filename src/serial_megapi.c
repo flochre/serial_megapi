@@ -1,8 +1,14 @@
 #include "serial_megapi.h"
 
 #include <math.h>
+#include "stdlib.h"
 
-char makeblock_response_msg[MKBLK_MAX_MSG_SIZE];
+char startPattern[2] = {0xff, 0x55};
+char endPattern[2] = {0xd, 0xa};
+
+char messageBuffer[MKBLK_MAX_MSG_SIZE];
+int messageIndex = 0;
+int processingMessage = 0;
 
 union
 {
@@ -42,11 +48,15 @@ float encoders_speed[4];
 int fd_ = -1;
 int serial_initialized_ = 0;
 
+int ii = 0;
+int serial_new_message = 0x0;
+char last_serial_char = 0x0;
+
 PI_THREAD (read_serial)
 {
   for (;;){
     delay(3);
-    receive_msg(fd_);
+    read_serial_megapi();
   }
 }
 
@@ -101,6 +111,7 @@ int init_serial(const char * device, int baud){
 
         int count = 0;
         while(!received_version && count < 20){
+            // printf("Request Version\n");
             request_version();
             count++;
             delay(100);
@@ -147,7 +158,7 @@ int check_valid_value(float value_to_check, float epsilon, float max){
     return (fabs(value_to_check) > epsilon && fabs(value_to_check) < max);
 }
 
-int decode_data(){
+int decode_data(char * makeblock_response_msg){
     int ret = -1;
     if(0xff == makeblock_response_msg[0] && 0x55 == makeblock_response_msg[1] 
         && VERSION_DEV_ID == makeblock_response_msg[2] && DATA_TYPE_STRING == makeblock_response_msg[3]
@@ -196,6 +207,8 @@ int decode_data(){
                 }
                 piUnlock (OTHER_MUTEX) ;
                 piUnlock (USS_MUTEX) ;
+                // DEBUG OUTPUT
+                // printf("USS DATA : port %d / value : %f", port, data_uss[port-1-4].distance_cm);
                 break;
             case GYRO_DEV_ID:
                 piLock (IMU_MUTEX) ;
@@ -214,6 +227,7 @@ int decode_data(){
                     }
                     
                 }
+                gyro_new_data = 1;
                 piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
@@ -248,6 +262,7 @@ int decode_data(){
                     }
                 }
                 ret = 0;
+                gyro_new_data = 1;
                 piUnlock (OTHER_MUTEX) ;
                 piUnlock (IMU_MUTEX) ;
                 break;
@@ -425,6 +440,7 @@ int get_all_imu_infos(float * ypr, float * ang_vel, float * lin_acc){
 float get_gyro_roll(){
     piLock (IMU_MUTEX) ;
     float x = data_gyro.roll_;
+    gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return x;
 }
@@ -432,6 +448,7 @@ float get_gyro_roll(){
 float get_gyro_pitch(){
     piLock (IMU_MUTEX) ;
     float y = data_gyro.pitch_;
+    gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return y;
 }
@@ -439,6 +456,7 @@ float get_gyro_pitch(){
 float get_gyro_yaw(){
     piLock (IMU_MUTEX) ;
     float z = data_gyro.yaw_;
+    gyro_new_data = 0x0;
     piUnlock (IMU_MUTEX) ;
     return z;
 }
@@ -533,18 +551,18 @@ float get_uss_cm(int port){
     return distance_cm;
 }
 
-// int request_gyro_all_axes(const int fd){
-//     return request_gyro(fd, GYRO_ALL_AXES);
-// }
+int request_gyro_all_axes(const int fd){
+    return request_gyro(fd, GYRO_ALL_AXES);
+}
 
-// int request_gyro(const int fd, char axis){
-//     char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
-//     char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
-//     =   {0xff, 0x55, GYRO_MSG_SIZE, 
-//         ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
+int request_gyro(const int fd, char axis){
+    char ext_id_gyro = (((GYRO_PORT+axis)<<4)+GYRO_DEV_ID);
+    char gyro_msg[HEADER_MSG_SIZE + GYRO_MSG_SIZE] 
+    =   {0xff, 0x55, GYRO_MSG_SIZE, 
+        ext_id_gyro, ACTION_GET, GYRO_DEV_ID, GYRO_PORT, axis};
 
-//     return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
-// }
+    return send_data(fd, gyro_msg, HEADER_MSG_SIZE + GYRO_MSG_SIZE);
+}
 
 int request_motor_info(const int fd, char motor, char pos_speed){
 
@@ -600,47 +618,86 @@ int request_version(){
     return send_data(fd_, version_msg, HEADER_MSG_SIZE + VERSION_MSG_SIZE);
 }
 
-void receive_msg(int fd){
-    int ii = 0;
-    int print_version = 0x0;
+void read_serial_megapi(void)
+{
+    int serial_port = fd_;
+    char receivedByte = serialGetchar(serial_port);
 
-    piLock (OTHER_MUTEX);
-    while (serialDataAvail (fd)){
-        makeblock_response_msg[ii] = serialGetchar (fd);
-        // printf (" -> %3d", makeblock_response_msg[ii]) ;
-        fflush (stdout) ;
+    // printf("%d\n", receivedByte);
 
-        // in the case were we are receiving the serial via USB
-        // the Arduino will reset and send the string Version over serial
-        // so we need to wait for it before behing able to start
-        // therefore we need to read also on other serials
-        if(!received_version && 0x56 == makeblock_response_msg[0]){
+    if(!serial_initialized_ && !received_version){
+        // if the value is comming from USB then we get the string directly
+        if(0x56 == receivedByte){
+            messageIndex = 0;
             received_version = 0x1;
-            if (0x56 == makeblock_response_msg[ii]){
-                print_version = 0x1;
+
+            messageBuffer[messageIndex++] = receivedByte;
+
+            while (serialDataAvail (serial_port)){
+                messageBuffer[messageIndex++] = serialGetchar(serial_port);
+            }
+
+            printf("Arduino %s", messageBuffer); 
+
+        }
+    }
+
+    if (!processingMessage) {
+        // Check for start of message pattern
+        if (startPattern[0] == receivedByte) {
+            char controlByte = serialGetchar(serial_port);
+            if (startPattern[1] == controlByte) {
+                messageIndex = 0; // Reset index for new message
+                memset(messageBuffer, 0, MKBLK_MAX_MSG_SIZE); // Clear the message buffer
+                processingMessage = 1; // Set flag to indicate message reception started
+                messageBuffer[messageIndex++] = receivedByte;
+                messageBuffer[messageIndex++] = controlByte;
+                receivedByte = serialGetchar(serial_port); // Receive next byte before processing
             }
         }
-
-        // In the case of USS sensor the header is send before the USS data is there
-        // therefore we need to wait for the data
-        if (2 == ii && (USS_DEV_ID == (makeblock_response_msg[ii]&0xf))){
-            delay(13);
-        }
-
-        ii++;
-    }
-    piUnlock (OTHER_MUTEX);
-
-    if(ii >= MAKEBLOCK_MSG_SIZE ){
-        if(0x0 == print_version){
-            // printf ("\ndata_received of size: %d", ii) ;
-            decode_data();
-        } else if(0x1 == print_version){
-            printf("Arduino %s", makeblock_response_msg);
-        }
     }
 
+    // Store bytes in the message buffer
+    if (processingMessage) {
+        messageBuffer[messageIndex++] = receivedByte;
+
+        // printf("%d ", receivedByte);
+
+        // Check for end of message pattern
+        if (endPattern[0] == receivedByte) {
+            char controlByte = serialGetchar(serial_port);
+            if (endPattern[1] == controlByte) {
+                // Set flag to indicate message reception finished
+                processingMessage = 0;
+                messageBuffer[messageIndex++] = endPattern[1];
+
+                // Create a copy of the message to process asynchronously
+                char *copiedMessage = malloc((messageIndex + 1) * sizeof(char));
+                if (copiedMessage != NULL) {
+                    memcpy(copiedMessage, messageBuffer, messageIndex);
+
+                    // DEBUG OUTPUT
+                    // for(int b = 0; b < messageIndex; b++){
+                    //     printf(" %d", copiedMessage[b]);
+                    // }
+                    // printf("\n");
+
+
+                    // Process the received message asynchronously
+                    // processMessage(copiedMessage, messageIndex);
+                    decode_data(copiedMessage);
+
+                    // free(copiedMessage);
+                } else {
+                    fprintf(stderr, "Memory allocation failed.\n");
+                }
+            }
+        }
+    }
 }
+
+
+
 
 int reset_motors(const int fd){
     char reset_msg[HEADER_MSG_SIZE + RESET_MOTOR_MSG_SIZE]

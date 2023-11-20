@@ -46,8 +46,12 @@ int main ()
   }
 
   int uss_port = 0x7;
+  int uss_port_1 = 0x8;
   // init_uss(fd, uss_port);
+  // init_uss(fd, uss_port_1);
   // init_two_motors_info(fd, 2, 3);
+
+  // init_gyro(fd, 0x6);
 
   
 
@@ -65,47 +69,39 @@ int main ()
 
       int my_test_speed = 20;
 
-      // if(5 == count){
-      //   set_speed(fd, 2, my_test_speed);
-      //   set_speed(fd, 3, -my_test_speed);
-      // }
+      if(35 == count){
+        // set_speed(fd, 2, my_test_speed);
+        // set_speed(fd, 3, -my_test_speed);
+        init_gyro(fd, 0x6);
+        
+      }
 
-      // if(105 == count){
+      if(65 == count){
       //   set_speed(fd, 2, 0);
       //   set_speed(fd, 3, 0);
-      // }
 
-      // if(120 == count){
-      //   set_speed(fd, 2, -my_test_speed);
-      //   set_speed(fd, 3, my_test_speed);
-      // }
+        stop_gyro(fd, 0x6);
+        
+      }
+
+      if(105 == count){
+      //   set_speed(fd, 2, 0);
+      //   set_speed(fd, 3, 0);
+
+        init_gyro(fd, 0x8);
+        
+      }
+
+      if(120 == count){
+        // set_speed(fd, 2, -my_test_speed);
+        // set_speed(fd, 3, my_test_speed);
+        stop_gyro(fd, 0x8);
+      }
 
       // if(220 == count){
       //   set_speed(fd, 2, 0);
       //   set_speed(fd, 3, 0);
       // }
-
-      if(0 == count % 2){
-        // request_uss(fd, uss_port);
-        // printf ("\nOut Gyro: %f: ", get_gyro(fd, GYRO_AXE_X));  
-        // request_gyro_all_axes(fd);
-
-        printf ("\nRequest Gyro\n");
-        request_gyro(fd, GYRO_ALL_AXES);
-        // request_gyro(fd, GYRO_AXE_Z);
-
-        // request_motor_position(fd, 2);
-        // request_motor_speed(fd, 3);
-        // request_motor_speed(fd, 2); 
-      } else {
-        // printf ("\nOut USS : %f: ", get_uss(fd, 0x7));
-        // request_uss(fd, 0x7);
-        // request_motor_position(fd, 3);  
-        // request_motor_speed(fd, 1); 
-        // request_motor_speed(fd, 2); 
-        // request_motor_speed(fd, 3); 
-        // request_motor_speed(fd, 4); 
-      }
 
       // printf( "gyro_x : %f / gyro_z : %f / uss_cm : %f \n", get_gyro_x(), get_gyro_z(), get_uss(7));
       
@@ -113,14 +109,17 @@ int main ()
       ++count ;
     }
 
-    // if(is_ultrasonic_new_data(uss_port)){
-    //   printf("uss_cm : %f \n", get_uss_cm(uss_port));
-    // }
+    if(is_ultrasonic_new_data(uss_port)){
+      printf("USS : %f \n", get_uss_cm(uss_port));
+    }
+
+    if(is_ultrasonic_new_data(uss_port_1)){
+      printf("USS : %f \n", get_uss_cm(uss_port_1));
+    }
       
     if(is_gyro_new_data()){
       printf("Gyro : %f \n", get_gyro_yaw());
     }
-    // printf("Motor Position : %f \n", get_motor_position(3));
 
   }
 
