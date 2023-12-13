@@ -649,7 +649,7 @@ void receive_msg(int fd){
 
 int reset_motors(const int fd){
     char reset_msg[HEADER_MSG_SIZE + RESET_MOTOR_MSG_SIZE]
-    = {0xff, 0x55, RESET_MOTOR_MSG_SIZE, 0x0, ACTION_RUN};
+    = {0xff, 0x55, RESET_MOTOR_MSG_SIZE, 0x0, ACTION_RESET};
     return send_data(fd, reset_msg, HEADER_MSG_SIZE + RESET_MOTOR_MSG_SIZE);
 }
 
